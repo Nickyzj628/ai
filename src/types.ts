@@ -8,10 +8,6 @@ export type Model = {
 	model?: string;
 	/** 使用本地llama.cpp等服务时可以不填 */
 	apiKey?: string;
-	/**
-	 * 后续llm.ts发出的请求体会带上它
-	 * @example { chat_template_kwargs: { enable_thinking: false } }
-	 */
 	customBody?: Record<string, any>;
 	/**
 	 * 模型支持的消息输入类型
@@ -25,6 +21,11 @@ export type Model = {
 	 * @remarks 会在每轮对话结束后检查上下文阈值，自动压缩消息
 	 */
 	context?: number;
+	/**
+	 * 自定义请求体，会在每轮请求时带上
+	 * @example chat_template_kwargs: { enable_thinking: false }
+	 */
+	[key: string]: unknown;
 };
 
 /** 文/图/音/视频，暂未实现文件输入 */
@@ -103,7 +104,7 @@ export type ToolDefinition = {
 		};
 	};
 	/** 工具的实际执行函数 */
-	handler: (...args: any) => any;
+	execute: (...args: any) => any;
 };
 
 export type ToolCall = {

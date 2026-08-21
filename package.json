@@ -16,5 +16,8 @@
 		"@biomejs/biome": "^2.5.9",
 		"@types/node": "^26.2.0",
 		"tsdown": "^0.22.14"
+	},
+	"dependencies": {
+		"@nickyzj2023/utils": "^1.0.92"
 	}
 }

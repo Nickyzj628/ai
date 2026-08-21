@@ -7,6 +7,10 @@ settings:
 importers:
 
   .:
+    dependencies:
+      '@nickyzj2023/utils':
+        specifier: ^1.0.92
+        version: 1.0.92
     devDependencies:
       '@biomejs/biome':
         specifier: ^2.5.9
@@ -76,6 +80,9 @@ packages:
     engines: {node: '>=14.21.3'}
     cpu: [x64]
     os: [win32]
+
+  '@nickyzj2023/utils@1.0.92':
+    resolution: {integrity: sha512-QBvQ1uVeAu+1X1+ccrjeNrAiMSdnOH6pHzm4GLY1YZ0dvKEaVxHdxAnScbXnm0iFce7HHbfstzA7ISCInQZrnQ==}
 
   '@oxc-project/types@0.144.0':
     resolution: {integrity: sha512-nuhZIOLuI6TFQ32I/WnUx+SCPY7SdSKwgnFHydAuoS1+Z4BRcaP+RRJmGzl9lw+0OFF7UmaESf7KQRXaNLHypg==}
@@ -497,6 +504,8 @@ snapshots:
 
   '@biomejs/cli-win32-x64@2.5.9':
     optional: true
+
+  '@nickyzj2023/utils@1.0.92': {}
 
   '@oxc-project/types@0.144.0': {}
 
