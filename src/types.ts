@@ -1,3 +1,7 @@
+// ================================
+// 模型配置
+// ================================
+
 export type Model = {
 	baseUrl: string;
 	/** 如果不传，会尝试使用GET {baseUrl}/models获取到的第一个模型 */
@@ -12,28 +16,38 @@ export type Model = {
 	/**
 	 * 模型支持的消息输入类型
 	 * @default ["text"]
-	 * @remarks 会在发出请求前检查上下文是否含有不支持的输入
+	 * @remarks 会在每轮对话前校验消息类型，存在不支持的输入时报错
 	 */
-	modalities?: InputType[];
+	modalities?: Modality[];
 	/**
 	 * 模型的最大上下文
 	 * @default 131072
-	 * @remarks 会在发出请求后检查上下文是否即将抵达阈值，然后自动压缩
+	 * @remarks 会在每轮对话结束后检查上下文阈值，自动压缩消息
 	 */
 	context?: number;
 };
 
-export type InputType = "text" | "image" | "video" | "audio";
+/** 文/图/音/视频，暂未实现文件输入 */
+export type Modality = "text" | "image" | "audio" | "video";
+
+// ================================
+// 消息类型
+// ================================
 
 export type Message = {
-	role: "system" | "user" | "assistant" | "tool" | "function";
-	/** OpenRouter的思考内容字段，其他供应商的会尽可能合并到该字段内 */
+	role: "system" | "user" | "assistant" | "tool";
 	reasoning?: string | null;
 	content: string | ContentPart[];
 	tool_calls?: ToolCall[];
 	tool_call_id?: string;
 	[key: string]: unknown;
 };
+
+export type ContentPart =
+	| TextContent
+	| ImageContent
+	| AudioContent
+	| VideoContent;
 
 export type TextContent = {
 	type: "text";
@@ -65,16 +79,11 @@ export type VideoContent = {
 	};
 };
 
-export type ContentPart =
-	| TextContent
-	| ImageContent
-	| AudioContent
-	| VideoContent;
+// ================================
+// 工具定义、调用
+// ================================
 
 export type ToolDefinition = {
-	// ================================
-	// POST /chat/completions接受的参数
-	// ================================
 	type: "function";
 	function: {
 		name: string;
@@ -86,17 +95,14 @@ export type ToolDefinition = {
 				{
 					type: string;
 					description?: string;
-					/** 在此处设置的required，发出请求前会自动提到外面去 */
+					/** 语法糖，等价于在parameters.required.push(当前property key) */
 					required?: boolean;
 				}
 			>;
 			required?: string[];
 		};
 	};
-
-	// ================================
-	// 工具的实际执行函数，chatCompletions响应AI的工具调用请求时用到
-	// ================================
+	/** 工具的实际执行函数 */
 	handler: (...args: any) => any;
 };
 
