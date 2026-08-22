@@ -1,9 +1,10 @@
 // ================================
-// Agent Loop：用户输入 -> while(agent提供模型所需信息) -> 模型输出
+// Agent Loop，即Re-Act：用户输入 -> while(模型思考 <-> Agent帮模型调用外部工具) -> 模型输出
 // ================================
 
 import { to } from "@nickyzj2023/utils";
-import type { Message, Model, ToolCall, ToolDefinition } from "./types";
+import { stream } from "./llm.js";
+import type { Message, Model, ToolCall, ToolDefinition } from "./types.js";
 
 export async function* runAgent(
 	model: Model,
@@ -11,7 +12,7 @@ export async function* runAgent(
 	tools: ToolDefinition[],
 ) {
 	const toolMap = new Map(tools.map((tool) => [tool.function.name, tool]));
-	const stopReason: "end_turn" | "tool_use" | "max_tokens" | "aborted" =
+	const finishReason: "end_turn" | "tool_use" | "max_tokens" | "aborted" =
 		"end_turn";
 
 	while (true) {
@@ -32,7 +33,7 @@ export async function* runAgent(
 
 		// 3. 如果没有工具调用，则结束循环
 		if (toolCalls.length === 0) {
-			yield { type: "turn_end", stopReason };
+			yield { type: "turn_end", finishReason };
 			return;
 		}
 

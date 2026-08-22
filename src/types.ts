@@ -8,7 +8,6 @@ export type Model = {
 	model?: string;
 	/** 使用本地llama.cpp等服务时可以不填 */
 	apiKey?: string;
-	customBody?: Record<string, any>;
 	/**
 	 * 模型支持的消息输入类型
 	 * @default ["text"]
@@ -96,7 +95,7 @@ export type ToolDefinition = {
 				{
 					type: string;
 					description?: string;
-					/** 语法糖，等价于在parameters.required.push(当前property key) */
+					/** defineTool()提供的语法糖，等价于在parameters.required.push(当前property key) */
 					required?: boolean;
 				}
 			>;
@@ -114,4 +113,44 @@ export type ToolCall = {
 		name: string;
 		arguments: string;
 	};
+};
+
+// ================================
+// SSE事件流
+// ================================
+
+/** llm.stream()对外的统一输出 */
+export type StreamEvent =
+	| { type: "reasoning_delta"; delta: string }
+	| { type: "content_delta"; delta: string }
+	| { type: "tool_call"; id: string; name: string; args: any }
+	| { type: "done"; finishReason: string | null; usage?: Usage }
+	| { type: "error"; message: string };
+
+/** llm.stream()内部要处理的数据 */
+export type ChatCompletionsChunk =
+	| {
+			id: string;
+			object: "chat.completion.chunk";
+			created: number;
+			model: string;
+			choices: {
+				index: number;
+				delta: Pick<Message, "reasoning" | "content"> & {
+					tool_calls?: ({ index: number } & Partial<ToolCall>)[];
+				};
+				finish_reason: FinishReason;
+			}[];
+			usage?: Usage;
+	  }
+	| "[DONE]";
+
+/** 模型可能返回的finish_reason值：停止/工具调用/上下文超限 */
+export type FinishReason = "stop" | "tool_calls" | "length" | null;
+
+export type Usage = {
+	prompt_tokens: number;
+	completion_tokens: number;
+	total_tokens: number;
+	[key: string]: any;
 };
