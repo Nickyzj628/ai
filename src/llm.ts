@@ -6,9 +6,9 @@ import { fetcher, parseSSE, pick, to } from "@nickyzj2023/utils";
 import type {
 	ChatCompletionsChunk,
 	FinishReason,
+	LLMEvent,
 	Message,
 	Model,
-	StreamEvent,
 	ToolCall,
 	ToolDefinition,
 	Usage,
@@ -36,11 +36,14 @@ const extractReasoning = (msgLike: Record<string, any>) => {
 	return String(msgLike.reasoning || msgLike.reasoning_content);
 };
 
+/**
+ * 流式请求模型，转发
+ */
 export async function* stream(
 	model: Model,
 	messages: Message[],
 	tools: ToolDefinition[] = [],
-): AsyncGenerator<StreamEvent> {
+): AsyncGenerator<LLMEvent> {
 	// 剥离ToolDefinition里的私有字段/语法糖
 	const validTools = tools.map((tool) => detachToolArguments(tool)[0]);
 

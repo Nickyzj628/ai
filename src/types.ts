@@ -116,18 +116,18 @@ export type ToolCall = {
 };
 
 // ================================
-// SSE事件流
+// llm.ts SSE事件流
 // ================================
 
-/** llm.stream()对外的统一输出 */
-export type StreamEvent =
+/** stream()对外输出的事件 */
+export type LLMEvent =
 	| { type: "reasoning_delta"; delta: string }
 	| { type: "content_delta"; delta: string }
 	| { type: "tool_call"; id: string; name: string; args: any }
 	| { type: "done"; finishReason: string | null; usage?: Usage }
 	| { type: "error"; message: string };
 
-/** llm.stream()内部要处理的数据 */
+/** stream()内部要处理的事件流 */
 export type ChatCompletionsChunk =
 	| {
 			id: string;
@@ -154,3 +154,16 @@ export type Usage = {
 	total_tokens: number;
 	[key: string]: any;
 };
+
+// ================================
+// agent.ts
+// ================================
+
+export type AgentEvent =
+	| { type: "assistant_text"; delta: string }
+	| { type: "tool_call"; id: string; name: string; args: unknown }
+	| { type: "tool_result"; id: string; name: string; result: string }
+	| {
+			type: "turn_end";
+			stopReason: "end_turn" | "max_tokens" | "aborted" | "error";
+	  };
