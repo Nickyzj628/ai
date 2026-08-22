@@ -18,9 +18,10 @@ export default defineTool(
 			},
 		});
 		const data = await api.get<any>(`/${city}`);
+		const nearestArea = data.nearest_area[0];
 		const currentCondition = data.current_condition[0];
 		return [
-			`城市: ${city}`,
+			`位置：${nearestArea.country[0].value}-${nearestArea.region[0].value}-${nearestArea.areaName[0].value}`,
 			`当前温度: ${currentCondition.temp_C}°C`,
 			`体感温度: ${currentCondition.FeelsLikeC}°C`,
 			`天气状况: ${currentCondition.weatherDesc[0].value}`,

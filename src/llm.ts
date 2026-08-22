@@ -32,8 +32,8 @@ const detachToolArguments = (toolDefinition: ToolDefinition) => {
  * - 火山引擎的叫reasoning_content
  * @returns 统一返回reasoning作为思考内容字段
  */
-const extractReasoning = (msgLike: Record<string, any>) => {
-	return String(msgLike.reasoning || msgLike.reasoning_content);
+const extractReasoning = (msgLike: Record<string, any>): string | undefined => {
+	return msgLike.reasoning || msgLike.reasoning_content;
 };
 
 /**

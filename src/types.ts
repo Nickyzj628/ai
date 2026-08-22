@@ -124,7 +124,7 @@ export type LLMEvent =
 	| { type: "reasoning_delta"; delta: string }
 	| { type: "content_delta"; delta: string }
 	| { type: "tool_call"; id: string; name: string; args: any }
-	| { type: "done"; finishReason: string | null; usage?: Usage }
+	| { type: "done"; finishReason: FinishReason; usage?: Usage }
 	| { type: "error"; message: string };
 
 /** stream()内部要处理的事件流 */
@@ -160,10 +160,5 @@ export type Usage = {
 // ================================
 
 export type AgentEvent =
-	| { type: "assistant_text"; delta: string }
-	| { type: "tool_call"; id: string; name: string; args: unknown }
-	| { type: "tool_result"; id: string; name: string; result: string }
-	| {
-			type: "turn_end";
-			stopReason: "end_turn" | "max_tokens" | "aborted" | "error";
-	  };
+	| LLMEvent
+	| { type: "tool_result"; id: string; name: string; result: string };
