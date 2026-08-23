@@ -3,6 +3,7 @@
 // ================================
 
 import readline from "node:readline";
+import type { FinishReason, Usage } from "./types.js";
 
 export class TUI {
 	private rl: readline.Interface | null = null;
@@ -16,11 +17,12 @@ export class TUI {
 			output: process.stdout,
 		});
 		this.prompt();
-	}
-	/** 停止TUI，清理事件监听 */
-	stop() {
-		this.rl?.close();
-		this.rl = null;
+
+		// 停止TUI，清理事件监听
+		this.rl.on("close", () => {
+			this.rl?.close();
+			this.rl = null;
+		});
 	}
 
 	/** 监听用户输入 */
@@ -59,14 +61,16 @@ export class TUI {
 	}
 	/** 打印工具调用 */
 	printToolCall(name: string, args: any) {
-		process.stdout.write(`\n[工具调用] ${name}(${JSON.stringify(args)})`);
+		process.stdout.write(`\n[工具调用：${name}] ${args}`);
 	}
 	/** 打印工具结果 */
 	printToolResult(name: string, result: string) {
-		process.stdout.write(`\n[工具结果] ${name}(${JSON.stringify(result)})`);
+		process.stdout.write(`\n[工具结果：${name}] ${result}`);
 	}
-	/** 轮次结束时换行 */
-	printFinish() {
-		process.stdout.write("\n");
+	/** 打印轮次结束原因、token消耗 */
+	printFinish(finishReason: FinishReason, usage?: Usage) {
+		process.stdout.write(
+			`\n[本轮结束：${finishReason}] ${usage ? `输入${usage.prompt_tokens}tok，输出${usage.completion_tokens}tok，总共${usage.total_tokens}tok` : ""}\n\n`,
+		);
 	}
 }

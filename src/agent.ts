@@ -21,7 +21,7 @@ export async function* runAgent(
 
 	while (true) {
 		// 1. 流式调用大模型，收集回复内容
-		const content = "";
+		let content = "";
 		const toolCalls: ToolCall[] = [];
 
 		for await (const e of stream(model, messages, tools)) {
@@ -31,6 +31,7 @@ export async function* runAgent(
 					break;
 				}
 				case "content_delta": {
+					content += e.delta;
 					yield e;
 					break;
 				}
@@ -54,11 +55,14 @@ export async function* runAgent(
 		}
 
 		// 2. 把模型的回复推入上下文
-		messages.push({
+		const message: Message = {
 			role: "assistant",
-			content: content,
-			tool_calls: toolCalls,
-		});
+			content,
+		};
+		if (toolCalls.length > 0) {
+			message.tool_calls = toolCalls;
+		}
+		messages.push(message);
 
 		// 3. 如果没有工具调用，则结束循环
 		if (toolCalls.length === 0) {
