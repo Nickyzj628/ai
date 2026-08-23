@@ -6,9 +6,8 @@ import type { AgentEvent, Message } from "./types.js";
 
 // 1. 读取配置
 const model = defineModel({
-	baseUrl: "https://api.deepseek.com/v1",
-	apiKey: "sk-44bf6ee59af444a59a9559d72fc7341b",
-	model: "deepseek-v4-flash",
+	baseUrl: "https://nickyzj.run:11434/v1",
+	model: "MiniCPM5-1B-Q4_K_M",
 });
 
 // 2. 读取上下文
@@ -40,7 +39,7 @@ tui.onPrompt(async (input) => {
 			}
 			case "content_delta": {
 				if (prevEventType !== "content_delta" && prevEventType !== "done") {
-					tui.printText("\n\n");
+					tui.printText("\n< ");
 				}
 				tui.printText(e.delta);
 				break;
