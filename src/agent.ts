@@ -66,7 +66,6 @@ export async function* runAgent(
 
 		// 3. 如果没有工具调用，则结束循环
 		if (toolCalls.length === 0) {
-			yield { type: "done", finishReason: "stop" };
 			return;
 		}
 
