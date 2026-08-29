@@ -7,7 +7,5 @@ export default defineConfig({
 	format: "esm",
 	dts: true,
 	platform: "node",
-	// 显式生成 sourcemap：配合 field 便于用户调试；库代码不做压缩（压缩会丢失可读性）
-	sourcemap: true,
 	clean: true,
 });

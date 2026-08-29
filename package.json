@@ -1,6 +1,6 @@
 {
 	"name": "@nickyzj2023/ai",
-	"version": "1.1.0",
+	"version": "1.1.1",
 	"description": "我的“pi”，参考了pi-from-scratch",
 	"type": "module",
 	"main": "./dist/index.mjs",

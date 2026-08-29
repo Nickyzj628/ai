@@ -1,11 +1,13 @@
 import { existsSync } from "node:fs";
 import { loadEnvFile } from "node:process";
-import { runAgent } from "./agent.js";
+import {
+	defineModel,
+	getTime,
+	getWeather,
+	type Message,
+	runAgent,
+} from "./index.js";
 import { TUI } from "./interfaces/tui.js";
-import getTime from "./tools/get-time.js";
-import getWeather from "./tools/get-weather.js";
-import type { Message } from "./types.js";
-import { defineModel } from "./utils/helper.js";
 
 // 仅在存在.env时加载：发布后用户可能没有该文件，直接调用会抛错
 if (existsSync(".env")) {
