@@ -7,6 +7,7 @@ import { defineModel } from "./helper.js";
 import getWeather from "./tools/get-weather.js";
 import { TUI } from "./tui.js";
 import type { Message } from "./types.js";
+import getTime from "./tools/get-time.js";
 
 // 仅在存在.env时加载：发布后用户可能没有该文件，直接调用会抛错
 if (existsSync(".env")) {
@@ -29,7 +30,7 @@ if (!model.apiKey) {
 const messages: Message[] = [];
 
 // 3. 读取工具
-const tools = [getWeather];
+const tools = [getWeather, getTime];
 
 // 4. 启动TUI，监听用户输入，按下回车后调用Agent
 const tui = new TUI(async (input) => {

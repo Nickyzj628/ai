@@ -21,7 +21,7 @@
 		"build": "tsdown",
 		"check": "biome check --diagnostic-level=error --write src/",
 		"typecheck": "tsc --noEmit",
-		"prepare": "pnpm run check && pnpm run typecheck && pnpm run build"
+		"prepublishOnly": "pnpm run check && pnpm run typecheck && pnpm run build"
 	},
 	"keywords": [
 		"agent",

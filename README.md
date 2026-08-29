@@ -46,8 +46,8 @@ for await (const e of runAgent(model, messages, tools)) {
 ### 在终端里使用
 
 ```bash
-# 配置环境变量、启动对话
-APIKEY=sk-xxx ai
+# 配置deepseek环境变量、启动对话
+SET APIKEY=sk-xxx && ai
 ```
 
 ## License
