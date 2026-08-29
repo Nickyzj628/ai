@@ -1,23 +1,53 @@
 {
-	"name": "ai",
+	"name": "@nickyzj2023/ai",
 	"version": "1.0.0",
-	"description": "",
-	"main": "index.js",
+	"description": "我的“pi”，参考了pi-from-scratch",
+	"type": "module",
+	"main": "./dist/index.mjs",
+	"types": "./dist/index.d.mts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.mts",
+			"import": "./dist/index.mjs"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"bin": {
+		"ai": "./dist/cli.mjs"
+	},
 	"scripts": {
 		"build": "tsdown",
 		"check": "biome check --diagnostic-level=error --write src/",
-		"prepublish": "pnpm run check && pnpm run build"
+		"typecheck": "tsc --noEmit",
+		"prepare": "pnpm run check && pnpm run typecheck && pnpm run build"
 	},
-	"keywords": [],
-	"author": "",
+	"keywords": [
+		"agent",
+		"llm",
+		"openai",
+		"react",
+		"tool-calling",
+		"streaming",
+		"cli",
+		"tui"
+	],
+	"author": "nickyzj2023",
 	"license": "ISC",
-	"type": "module",
+	"engines": {
+		"node": ">=26.0.0"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
 	"dependencies": {
 		"@nickyzj2023/utils": "^1.0.92"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.5.10",
-		"@types/node": "^26.3.0",
-		"tsdown": "^0.22.14"
+		"@biomejs/biome": "^2.5.11",
+		"@types/node": "^26.4.0",
+		"tsdown": "^0.22.14",
+		"typescript": "^7.0.2"
 	}
 }
