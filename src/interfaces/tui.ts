@@ -3,7 +3,7 @@
 // ================================
 
 import readline from "node:readline";
-import type { AgentEvent, FinishReason, Usage } from "./types.js";
+import type { AgentEvent, FinishReason, Usage } from "../types.js";
 
 export class TUI {
 	private rl: readline.Interface | null = null;

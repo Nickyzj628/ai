@@ -1,5 +1,5 @@
 import { fetcher } from "@nickyzj2023/utils";
-import { defineTool } from "../helper.js";
+import { defineTool } from "../utils/helper.js";
 
 export default defineTool(
 	"get_weather",

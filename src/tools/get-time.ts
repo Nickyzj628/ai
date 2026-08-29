@@ -1,5 +1,5 @@
 import { fetcher } from "@nickyzj2023/utils";
-import { defineTool } from "../helper.js";
+import { defineTool } from "../utils/helper.js";
 
 // 英文星期名映射为中文，让输出直接可读；未知值时回退到原始英文
 const weekdayNames: Record<string, string> = {
