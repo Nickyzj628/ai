@@ -171,7 +171,7 @@ export const summarizeMessages = async (
 
 	summarizingMessages.push(
 		{ role: "system", content: systemPrompt },
-		{ role: "user", content: "开始总结上下文" },
+		{ role: "user", content: "开始总结" },
 	);
 
 	let summarized = "";
