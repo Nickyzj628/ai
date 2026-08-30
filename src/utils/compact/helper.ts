@@ -1,33 +1,4 @@
-import { extractXmlTags } from "@nickyzj2023/utils";
-import type { Message, TextContent } from "../../types.js";
-
-/**
- * 判断消息是否可被总结
- * @remarks
- * - 跳过系统消息
- * - 跳过content含有第三方XML标签的消息（允许`<summary>`标签、纯文本、多模态消息）
- */
-export const isSummarizableMessage = (message: Message): boolean => {
-	if (message.role === "system") {
-		return false;
-	}
-
-	let text: string;
-	if (typeof message.content === "string") {
-		text = message.content;
-	} else if (Array.isArray(message.content)) {
-		// 多模态消息：仅提取文本部分用于检测XML标签，非文本部分（图片/音频/视频）不影响判断
-		text = message.content
-			.filter((part): part is TextContent => part.type === "text")
-			.map((part) => part.text)
-			.join("");
-	} else {
-		return false;
-	}
-
-	const tags = extractXmlTags(text);
-	return tags.length === 0 || tags.every((tag) => tag === "summary");
-};
+import type { Message } from "../../types.js";
 
 /**
  * 判断消息是否为带有工具调用的 assistant 消息

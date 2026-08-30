@@ -1,11 +1,7 @@
 import { createXMLText, logger } from "@nickyzj2023/utils";
 import { runAgent } from "../../agent.js";
-import type { Message } from "../../types.js";
-import {
-	findToolGroupRange,
-	hasToolCalls,
-	isSummarizableMessage,
-} from "./helper.js";
+import type { Message, Usage } from "../../types.js";
+import { findToolGroupRange, hasToolCalls } from "./helper.js";
 import type { Compact } from "./types.js";
 
 export const softDeleteToolResults = (
@@ -126,8 +122,8 @@ export const summarizeMessages = async (
 	}
 
 	// 收集可以被总结的消息
-	// - 跳过系统消息
-	// - 跳过content含有第三方XML标签的消息（允许纯文本、<summary>标签、多模态消息）
+	// 新规则：除去第一条system消息（系统提示词，保留原样不参与总结），
+	// 其余消息都可总结（含后续system消息、<summary>标签消息、多模态消息）
 	const summarizableIndices: number[] = [];
 	const summarizingMessages: Message[] = [];
 	for (let i = 0; i < messages.length; i++) {
@@ -136,32 +132,34 @@ export const summarizeMessages = async (
 			continue;
 		}
 
-		// assistant(tool_calls) + tool配对组需整体可总结，避免拆散导致API 400
+		// 第一条system消息是系统提示词，不参与总结、保留在原始位置
+		if (i === 0 && message.role === "system") {
+			continue;
+		}
+
+		// assistant(tool_calls) + tool配对组需整体总结，避免拆散导致API 400
+		// （新规则下组内消息均可总结，整组直接纳入）
 		if (hasToolCalls(message)) {
 			let j = i + 1;
 			while (j < messages.length && messages[j]?.role === "tool") {
 				j++;
 			}
 			const group = messages.slice(i, j);
-			if (group.every(isSummarizableMessage)) {
-				for (let k = i; k < j; k++) {
-					summarizableIndices.push(k);
-				}
-				summarizingMessages.push(...group);
+			for (let k = i; k < j; k++) {
+				summarizableIndices.push(k);
 			}
+			summarizingMessages.push(...group);
 			i = j - 1;
 			continue;
 		}
 
-		// 跳过孤立的tool消息（已由配对组逻辑处理）
+		// 跳过孤立的tool消息（正常数据流中tool必属于配对组，单独总结会破坏配对导致API 400）
 		if (message.role === "tool") {
 			continue;
 		}
 
-		if (isSummarizableMessage(message)) {
-			summarizableIndices.push(i);
-			summarizingMessages.push(message);
-		}
+		summarizableIndices.push(i);
+		summarizingMessages.push(message);
 	}
 
 	if (summarizableIndices.length === 0) {
@@ -175,11 +173,15 @@ export const summarizeMessages = async (
 	);
 
 	let summarized = "";
+	let usage: Usage | undefined;
 	for await (const e of runAgent(model, summarizingMessages, [])) {
 		if (e.type === "content_delta") {
 			summarized += e.delta;
+		} else if (e.type === "done") {
+			usage = e.usage;
 		}
 	}
+	logger(`总结了${summarizingMessages.length}条消息，消耗：`, usage);
 
 	// 替换原始消息数组中被总结的消息
 	// 从后往前删除以避免索引偏移，在首个被总结消息的位置插入摘要
