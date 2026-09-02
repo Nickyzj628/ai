@@ -1,20 +1,50 @@
 import { createXMLText, logger } from "@nickyzj2023/utils";
 import { runAgent } from "../../agent.js";
-import type { Message, Usage } from "../../types.js";
+import type { Message, Model, Usage } from "../../types.js";
 import { findToolGroupRange, hasToolCalls } from "./helper.js";
 import type { Compact } from "./types.js";
 
-export const softDeleteToolResults = (
+/** 默认的软删除多模态消息策略：让大模型精简消息内容 */
+const defaultReplacerOfToolResultContent: Compact.ReplacerOfToolResultContent =
+	async (content, options) => {
+		const model = options!.model as Model;
+		const messages: Message[] = [
+			{ role: "user", content },
+			{ role: "user", content: "请用一两句话对上条消息做个“省流”" },
+		];
+
+		let simplifiedContent = "";
+		for await (const e of runAgent(model, messages, [])) {
+			if (e.type === "content_delta") {
+				simplifiedContent += e.delta;
+			}
+		}
+		return simplifiedContent;
+	};
+
+export const softDeleteToolResults = async (
 	messages: Message[],
-	replacer: Compact.ReplacerOfToolResultContent,
-): Message[] => {
+	options: {
+		replacer?: Compact.ReplacerOfToolResultContent;
+		model?: Model;
+	},
+) => {
+	const { replacer = defaultReplacerOfToolResultContent, model } =
+		options ?? {};
+
+	// 如果使用默认策略，则必传model，否则无法简化消息内容
+	// 如果不使用默认策略，则必传replacer，否则无法进行压缩
+	if (!replacer && !model) {
+		return [];
+	}
+
 	// 传入的messages是顶层切分后的"可压缩区"（已排除倒数keepCount条），全量处理即可
 	// 注意：软删除只替换content不删除消息，不会拆散assistant(tool_calls) + tool配对组
 	// 返回被软删的消息引用，供后续hardDeleteSoftMessages按引用识别残留
 	const softDeleted: Message[] = [];
 	for (const message of messages) {
 		if (message?.role === "tool") {
-			message.content = replacer(message.content);
+			message.content = await replacer(message.content, { model });
 			softDeleted.push(message);
 		}
 	}
@@ -25,10 +55,41 @@ export const softDeleteToolResults = (
 	return softDeleted;
 };
 
-export const softDeleteOldMediaMessages = (
+/** 默认的软删除多模态消息策略：让大模型精简消息内容 */
+const defaultReplacerOfMediaContent: Compact.ReplacerOfMediaContent = async (
+	content,
+	options,
+) => {
+	const model = options!.model as Model;
+	const messages: Message[] = [
+		{ role: "user", content },
+		{ role: "user", content: "请用一两句话描述上方的多模态消息" },
+	];
+
+	let simplifiedContent = "";
+	for await (const e of runAgent(model, messages, [])) {
+		if (e.type === "content_delta") {
+			simplifiedContent += e.delta;
+		}
+	}
+	return simplifiedContent;
+};
+
+export const softDeleteOldMediaMessages = async (
 	messages: Message[],
-	replacer: Compact.ReplacerOfMediaContent,
-): Message[] => {
+	options: {
+		replacer?: Compact.ReplacerOfMediaContent;
+		model?: Model;
+	},
+) => {
+	const { replacer = defaultReplacerOfMediaContent, model } = options ?? {};
+
+	// 如果使用默认策略，则必传model，否则无法简化消息内容
+	// 如果不使用默认策略，则必传replacer，否则无法进行压缩
+	if (!replacer && !model) {
+		return [];
+	}
+
 	const mediaTypes = ["image_url", "input_audio", "video_url"];
 
 	// 传入的messages是顶层切分后的"可压缩区"（已排除倒数keepCount条），全量处理即可
@@ -40,7 +101,7 @@ export const softDeleteOldMediaMessages = (
 			Array.isArray(message.content) &&
 			message.content.some((part) => mediaTypes.includes(part.type))
 		) {
-			message.content = replacer(message.content);
+			message.content = await replacer(message.content, { model });
 			softDeleted.push(message);
 		}
 	}

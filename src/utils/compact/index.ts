@@ -90,10 +90,10 @@ export const compact = Object.assign(
 			keepCount = 10,
 
 			ratioToCompactToolResult = 0.5,
-			replacerOfToolResultContent = () => "（工具结果已消费）",
+			replacerOfToolResultContent,
 
 			ratioToCompactMedia = 0.6,
-			replacerOfMediaContent = () => "（消息已过期）",
+			replacerOfMediaContent,
 
 			ratioToClearSoftDeletedMessages = 0.7,
 
@@ -140,10 +140,11 @@ export const compact = Object.assign(
 
 		// 上下文 > 总上下文*50% => 压缩工具调用结果
 		if (tokens > context * ratioToCompactToolResult) {
-			for (const message of softDeleteToolResults(
-				compressible,
-				replacerOfToolResultContent,
-			)) {
+			const softDeletedMessages = await softDeleteToolResults(compressible, {
+				replacer: replacerOfToolResultContent,
+				model,
+			});
+			for (const message of softDeletedMessages) {
 				softDeleted.add(message);
 			}
 			result.hasCompactedToolResult = true;
@@ -151,10 +152,11 @@ export const compact = Object.assign(
 
 		// 上下文 > 总上下文*60% => 压缩图片/音频/视频消息
 		if (tokens > context * ratioToCompactMedia) {
-			for (const message of softDeleteOldMediaMessages(
+			const softDeletedMessages = await softDeleteOldMediaMessages(
 				compressible,
-				replacerOfMediaContent,
-			)) {
+				{ replacer: replacerOfMediaContent, model },
+			);
+			for (const message of softDeletedMessages) {
 				softDeleted.add(message);
 			}
 			result.hasCompactedMedia = true;

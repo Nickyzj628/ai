@@ -3,11 +3,13 @@ import type { Message, Model } from "../../types.js";
 export namespace Compact {
 	export type ReplacerOfToolResultContent = (
 		content: Message["content"],
-	) => Message["content"];
+		options?: Record<string, any>,
+	) => Promise<Message["content"]> | Message["content"];
 
 	export type ReplacerOfMediaContent = (
 		content: Message["content"],
-	) => Message["content"];
+		options?: Record<string, any>,
+	) => Promise<Message["content"]> | Message["content"];
 
 	export type SummarizeOptions = {
 		/** 用什么模型总结 */
