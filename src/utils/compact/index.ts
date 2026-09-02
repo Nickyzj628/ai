@@ -61,6 +61,10 @@ export const compact = Object.assign(
 			replacerOfMediaContent?: Compact.ReplacerOfMediaContent;
 
 			/**
+			 * 用于标记哪些消息被软删除了
+			 */
+			softDeletedMessageMark?: string;
+			/**
 			 * 上下文>总上下文*ratio时清理软删除残留的占位消息
 			 * @default 0.7
 			 * @remarks
@@ -96,6 +100,7 @@ export const compact = Object.assign(
 			replacerOfMediaContent,
 
 			ratioToClearSoftDeletedMessages = 0.7,
+			softDeletedMessageMark = "[已简化]",
 
 			ratioToSummarize = 0.8,
 			summarizeOptions,
@@ -142,6 +147,7 @@ export const compact = Object.assign(
 		if (tokens > context * ratioToCompactToolResult) {
 			const softDeletedMessages = await softDeleteToolResults(compressible, {
 				replacer: replacerOfToolResultContent,
+				mark: softDeletedMessageMark,
 				model,
 			});
 			for (const message of softDeletedMessages) {
@@ -154,7 +160,11 @@ export const compact = Object.assign(
 		if (tokens > context * ratioToCompactMedia) {
 			const softDeletedMessages = await softDeleteOldMediaMessages(
 				compressible,
-				{ replacer: replacerOfMediaContent, model },
+				{
+					replacer: replacerOfMediaContent,
+					mark: softDeletedMessageMark,
+					model,
+				},
 			);
 			for (const message of softDeletedMessages) {
 				softDeleted.add(message);
