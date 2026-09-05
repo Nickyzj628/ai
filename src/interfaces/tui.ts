@@ -114,12 +114,21 @@ export class TUI {
 		process.stdout.write(this.colorize(`[工具结果：${name}] ${result}`, "90"));
 	}
 
+	// 临时写个千分位转换
+	private formatter = new Intl.NumberFormat("en-US", {
+		notation: "compact",
+		maximumFractionDigits: 1,
+	});
+	private format(number: number) {
+		return this.formatter.format(number);
+	}
+
 	/** 打印轮次结束原因、token消耗 */
 	printFinish(finishReason: FinishReason, usage?: Usage) {
 		this.preparePrint("done");
 		process.stdout.write(
 			this.colorize(
-				`[本轮结束：${finishReason}] ${usage ? `输入${usage.prompt_tokens}tok，输出${usage.completion_tokens}tok，总共${usage.total_tokens}tok` : ""}${finishReason === "stop" ? "\n\n" : "\n"}`,
+				`[本轮结束：${finishReason}] ${usage ? `输入${this.format(usage.prompt_tokens)}token，输出${this.format(usage.completion_tokens)}token，总共${this.format(usage.total_tokens)}token` : ""}${finishReason === "stop" ? "\n\n" : "\n"}`,
 				"90",
 			),
 		);
