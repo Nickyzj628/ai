@@ -11,10 +11,11 @@ import {
 } from "./index.js";
 import { runSetup } from "./interfaces/setup.js";
 import { TUI } from "./interfaces/tui.js";
+import { loadMCPTools } from "./tools/mcp.js";
 import { loadConfig } from "./utils/config.js";
 
 /** 启动交互对话：配置来自全局配置文件，环境变量可临时覆盖 */
-const startChat = () => {
+const startChat = async () => {
 	// 1. 读取配置
 	const config = loadConfig();
 	if (!config) {
@@ -29,7 +30,8 @@ const startChat = () => {
 	const messages: Message[] = [];
 
 	// 4. 组装工具
-	const tools = [getWeather, getTime];
+	const mcpTools = await loadMCPTools(config.mcpServers);
+	const tools = [getWeather, getTime, ...mcpTools];
 
 	// 5. 启动TUI，监听用户输入，按下回车后调用Agent
 	const tui = new TUI(async (input) => {

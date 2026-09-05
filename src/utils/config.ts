@@ -5,11 +5,13 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import type { McpServer } from "../tools/mcp.js";
 
 export type Config = {
 	baseUrl: string;
 	apiKey: string;
 	model: string;
+	mcpServers: Record<string, McpServer>;
 };
 
 /**
