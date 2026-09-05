@@ -1,6 +1,6 @@
 # ai
 
-男生自用MyPi Coding Agent，0外部依赖
+男生自用MyPi Coding Agent
 
 ## 安装
 

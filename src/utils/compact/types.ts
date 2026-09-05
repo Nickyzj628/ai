@@ -1,40 +1,82 @@
-import type { Message, Model } from "../../types.js";
+import type { Message, Model, Usage } from "../../types.js";
 
 export namespace Compact {
+	export type Options = {
+		/** 提供token消耗情况时，能更准确地判断上下文是否达到阈值 */
+		usage?: Usage;
+
+		/**
+		 * 各种压缩方式统一保留的最近消息条数
+		 * @default 10
+		 * @remarks 压缩工具调用结果、压缩媒体消息、总结消息、硬删除兜底都会保留最近keepCount条消息不处理
+		 */
+		keepCount?: number;
+
+		/**
+		 * 压缩工具/媒体消息时做个标记，防止下次重复压缩
+		 * @default "[已压缩]"
+		 */
+		compactedMessageMark?: string;
+
+		/**
+		 * 上下文>总上下文*ratio时压缩工具调用结果
+		 * @default 0.6
+		 */
+		ratioToCompactToolResults?: number;
+		/**
+		 * 如何压缩工具调用结果
+		 * @default 让其他模型返回简化后的工具结果
+		 */
+		replacerOfToolResultContent?: Compact.ReplacerOfToolResultContent;
+
+		/**
+		 * 上下文>总上下文*ratio时压缩图片/音频/视频消息
+		 * @default 0.7
+		 */
+		ratioToCompactMedia?: number;
+		/**
+		 * 如何压缩媒体消息
+		 * @default 让其他模型用自然语言简短描述一遍
+		 */
+		replacerOfMediaContent?: Compact.ReplacerOfMediaContent;
+
+		/**
+		 * 上下文>总上下文*ratio时总结消息
+		 * @default 0.8
+		 * @remarks 如果总结成功，会把keepCount以前的消息压成一条用户消息，否则硬删除keepCount以前的消息
+		 */
+		ratioToSummarize?: number;
+		/**
+		 * 总结消息时的配置项
+		 * @default { systemPrompt: "你现在的任务是总结历史消息" }
+		 */
+		summarizeOptions?: Partial<Compact.SummarizeOptions>;
+	};
+
 	export type ReplacerOfToolResultContent = (
 		content: Message["content"],
 		options?: Record<string, any>,
-	) => Promise<Message["content"]> | Message["content"];
+	) => Promise<string> | string;
 
 	export type ReplacerOfMediaContent = (
 		content: Message["content"],
 		options?: Record<string, any>,
-	) => Promise<Message["content"]> | Message["content"];
+	) => Promise<string> | string;
 
 	export type SummarizeOptions = {
-		/** 用什么模型总结 */
-		model: Model;
-		/** 用于指导大模型如何总结消息的提示词 */
+		/** 指导大模型如何总结消息 */
 		systemPrompt: string;
+		model: Model;
 	};
 
-	/**
-	 * compactMessages 的返回值，告知调用方各压缩动作是否执行
-	 * @remarks
-	 * 这些字段是"操作级"标志：为 true 只代表对应操作已执行，不代表一定产生了效果。
-	 * 例如 hasSummarized 为 true 只代表进入了总结流程，是否真的总结成功，
-	 * 应由调用方检查消息数组里是否出现含 `<summary>` 标签的消息来判断。
-	 */
-	export type CompactResult = {
-		/** 是否执行了压缩工具调用结果 */
-		hasCompactedToolResult: boolean;
-		/** 是否执行了压缩图片/音频/视频消息 */
+	export type Result = {
+		/** 是否压缩了工具调用结果 */
+		hasCompactedToolResults: boolean;
+		/** 是否压缩了图片/音频/视频消息 */
 		hasCompactedMedia: boolean;
-		/** 是否执行了清理软删除残留的占位消息 */
-		hasClearedSoftDeletedMessages: boolean;
-		/** 是否执行了总结消息操作（是否真的总结，请检查消息中是否出现`<summary>`标签） */
+		/** 是否总结了消息 */
 		hasSummarized: boolean;
-		/** 是否执行了兜底硬删除较早消息 */
+		/** 是否硬删除了较早消息 */
 		hasDeletedOldMessages: boolean;
 	};
 }
