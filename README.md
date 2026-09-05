@@ -46,9 +46,14 @@ for await (const e of runAgent(model, messages, tools)) {
 ### 在终端里使用
 
 ```bash
-# 配置deepseek环境变量、启动对话
-SET APIKEY=sk-xxx && ai
+# 首次使用：交互式配置BASE_URL / APIKEY / MODEL / ...
+ai setup
+
+# 启动对话
+ai
 ```
+
+配置保存在 `~/.@nickyzj2023/ai/config.json`，任意目录下执行`ai`都能读取到
 
 ## License
 
