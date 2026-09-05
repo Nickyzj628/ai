@@ -1,6 +1,11 @@
 import { Client } from "@modelcontextprotocol/sdk/client";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { extractErrorMessage, isObject, omit } from "@nickyzj2023/utils";
+import {
+	extractErrorMessage,
+	isObject,
+	logger,
+	omit,
+} from "@nickyzj2023/utils";
 import type { ToolDefinition } from "../types.js";
 import { defineTool } from "../utils/helper.js";
 
@@ -90,11 +95,9 @@ export const loadMCPTools = async (mcpServers: Record<string, McpServer>) => {
 					server.url,
 					omit(server, ["type", "url"]),
 				);
-				console.log(`已加载MCP工具：${name}`);
+				logger(`已激活MCP客户端：${name}`);
 			} catch (e) {
-				console.error(
-					`MCP服务器${name}连接失败，跳过：${extractErrorMessage(e)}`,
-				);
+				logger(`MCP服务器${name}连接失败，跳过：${extractErrorMessage(e)}`);
 			}
 		}),
 	);
