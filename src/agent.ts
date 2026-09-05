@@ -81,7 +81,7 @@ export async function* runAgent(
 				const [error, response] = await to(tool.execute(JSON.parse(args)));
 				result = error
 					? `工具“${name}”执行出错：${error.message}`
-					: String(response);
+					: JSON.stringify(response);
 			}
 
 			messages.push({
