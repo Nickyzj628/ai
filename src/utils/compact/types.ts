@@ -43,7 +43,7 @@ export namespace Compact {
 		/**
 		 * 上下文>总上下文*ratio时总结消息
 		 * @default 0.8
-		 * @remarks 如果总结成功，会把keepCount以前的消息压成一条用户消息，否则硬删除keepCount以前的消息
+		 * @remarks 如果总结成功，会把keepCount以前的消息压成一条用户消息
 		 */
 		ratioToSummarize?: number;
 		/**
@@ -76,7 +76,7 @@ export namespace Compact {
 		hasCompactedMedia: boolean;
 		/** 是否总结了消息 */
 		hasSummarized: boolean;
-		/** 是否硬删除了较早消息 */
-		hasDeletedOldMessages: boolean;
+		/** 是否丢弃了一些旧消息（最终兜底策略） */
+		hasDiscardMessages: boolean;
 	};
 }

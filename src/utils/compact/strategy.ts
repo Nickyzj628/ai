@@ -1,27 +1,32 @@
 import { createXMLText, logger } from "@nickyzj2023/utils";
 import { runAgent } from "../../agent.js";
 import type { Message, Model, Usage } from "../../types.js";
-import { isMediaMessage } from "./helper.js";
+import { findToolGroupRange, isMediaMessage } from "./helper.js";
 import type { Compact } from "./types.js";
 
-/** 默认的软删除多模态消息策略：让大模型精简消息内容 */
+/** 默认的压缩工具结果策略：让大模型精简消息内容 */
 const defaultReplacerOfToolResultContent: Compact.ReplacerOfToolResultContent =
 	async (content, options) => {
 		const { model } = options ?? {};
 		const messages: Message[] = [
 			{ role: "user", content },
-			{ role: "user", content: "请用一两句话对上条消息做个“省流”" },
+			{ role: "user", content: "请用一两句话简述上条消息" },
 		];
 
 		let simplifiedContent = "";
 		for await (const e of runAgent(model, messages, [])) {
 			if (e.type === "content_delta") {
 				simplifiedContent += e.delta;
+			} else if (e.type === "error") {
+				throw new Error(e.message);
 			}
 		}
 		return simplifiedContent;
 	};
 
+/**
+ * @returns 实际处理了几条消息
+ */
 export const compactToolResults = async (
 	compressible: Message[],
 	options: {
@@ -30,38 +35,35 @@ export const compactToolResults = async (
 		model?: Model;
 	},
 ) => {
-	const {
-		replacer = defaultReplacerOfToolResultContent,
-		mark,
-		model,
-	} = options ?? {};
+	const { replacer, mark, model } = options ?? {};
 
 	// 如果使用默认策略，则必传model，否则无法简化消息内容
 	// 如果不使用默认策略，则必传replacer，否则无法进行压缩
 	if (!replacer && !model) {
-		return [];
+		return 0;
 	}
+	const _replacer = replacer || defaultReplacerOfToolResultContent;
 
-	const softDeleted: Message[] = [];
+	let count = 0;
 	for (const message of compressible) {
 		if (message?.role === "tool" && typeof message.content === "string") {
-			// 跳过已经软删除过的消息
+			// 跳过已经压缩过的消息
 			if (message.content.startsWith(mark)) {
 				continue;
 			}
-			message.content = mark;
-			message.content += await replacer(message.content, { model });
-			softDeleted.push(message);
+			const compacted = await _replacer(message.content, { model });
+			message.content = mark + compacted;
+			count++;
 		}
 	}
 
-	if (softDeleted.length > 0) {
-		logger(`软删除了${softDeleted.length}条工具调用结果消息`);
+	if (count > 0) {
+		logger(`压缩了${count}条工具调用结果`);
 	}
-	return softDeleted;
+	return count;
 };
 
-/** 默认的软删除多模态消息策略：让大模型精简消息内容 */
+/** 默认的压缩多模态消息策略：让大模型精简消息内容 */
 const defaultReplacerOfMediaContent: Compact.ReplacerOfMediaContent = async (
 	content,
 	options,
@@ -69,18 +71,23 @@ const defaultReplacerOfMediaContent: Compact.ReplacerOfMediaContent = async (
 	const { model } = options ?? {};
 	const messages: Message[] = [
 		{ role: "user", content },
-		{ role: "user", content: "请用一两句话简要描述上方的多模态消息" },
+		{ role: "user", content: "请用一两句话简述上方的多模态消息" },
 	];
 
 	let simplifiedContent = "";
 	for await (const e of runAgent(model, messages, [])) {
 		if (e.type === "content_delta") {
 			simplifiedContent += e.delta;
+		} else if (e.type === "error") {
+			throw new Error(e.message);
 		}
 	}
 	return simplifiedContent;
 };
 
+/**
+ * @returns 实际处理了几条消息
+ */
 export const compactMediaMessages = async (
 	compressible: Message[],
 	options: {
@@ -88,27 +95,27 @@ export const compactMediaMessages = async (
 		model?: Model;
 	},
 ) => {
-	const { replacer = defaultReplacerOfMediaContent, model } = options ?? {};
+	const { replacer, model } = options ?? {};
 
 	// 如果使用默认策略，则必传model，否则无法简化消息内容
 	// 如果不使用默认策略，则必传replacer，否则无法进行压缩
 	if (!replacer && !model) {
-		return [];
+		return 0;
 	}
+	const _replacer = replacer || defaultReplacerOfMediaContent;
 
 	let count = 0;
 	for (const message of compressible) {
 		if (isMediaMessage(message)) {
-			message.content = createXMLText(
-				"media",
-				await replacer(message.content, { model }),
-			);
+			const compacted = await _replacer(message.content, { model });
+			message.content = createXMLText("media", compacted);
 			count++;
 		}
 	}
 	if (count > 0) {
 		logger(`压缩了${count}条多模态消息`);
 	}
+	return count;
 };
 
 export const summarizeMessages = async (
@@ -118,12 +125,13 @@ export const summarizeMessages = async (
 	const { model, systemPrompt } = options ?? {};
 
 	// 消息太少不总结
-	if (compressible.length === 0) {
+	const summarizable = compressible.slice(1);
+	if (summarizable.length === 0) {
 		logger("消息太少，无需总结");
-		return;
+		return 0;
 	}
 
-	const summarizable = compressible.slice(1);
+	const count = summarizable.length;
 	summarizable.push(
 		{ role: "system", content: systemPrompt },
 		{ role: "user", content: "开始总结上下文" },
@@ -140,26 +148,43 @@ export const summarizeMessages = async (
 			throw new Error(e.message);
 		}
 	}
-	logger(`总结了${summarizable.length}条消息，消耗：`, usage);
 
 	compressible.splice(1, Infinity, {
 		role: "user",
 		content: createXMLText("summary", summarized),
 	});
+	logger(`总结了${count}条消息，消耗：`, usage);
+	return count;
 };
 
-export const hardDeleteOldMessages = (messages: Message[]) => {
-	// 传入的messages是顶层切分后的"可压缩区"（已排除倒数keepCount条）
-	// 从第一条user消息开始删除，保留开头的system消息
-	const startIndex = messages.findIndex((message) => message.role === "user");
+/**
+ * 最终的兜底压缩策略，从头删除旧消息，直到第二个回调函数返回true（达成目标）
+ */
+export const discardMessagesUntil = (
+	compressible: Message[],
+	until: (compressible: Message[]) => boolean,
+) => {
+	let count = 0;
 
-	// 压缩区里没有user消息时，没有可删除的余量
-	if (startIndex < 0) {
-		logger("消息太少，无需硬删除");
-		return;
+	while (compressible.length > 0 && !until(compressible)) {
+		// 每次删除10%（至少1条）
+		let endIndex = Math.max(1, Math.floor(compressible.length / 10));
+		// 同样要注意，不能分离tool消息组
+		if (compressible[endIndex]?.role === "tool") {
+			const range = findToolGroupRange(compressible, endIndex);
+			if (range) {
+				endIndex = range[1];
+			} else {
+				// 几乎不可能出现的情况：tool消息往前找不到assistant(tool_calls)
+				// 手动找到最后一个tool消息
+				while (compressible[endIndex]?.role === "tool") {
+					endIndex++;
+				}
+			}
+		}
+		count += compressible.splice(0, endIndex).length;
 	}
 
-	const deletedCount = messages.length - startIndex;
-	messages.splice(startIndex, deletedCount);
-	logger(`硬删除了${deletedCount}条较早的消息`);
+	logger(`丢弃了${count}条旧消息`);
+	return count;
 };

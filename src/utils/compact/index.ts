@@ -1,11 +1,11 @@
-import { logger, to } from "@nickyzj2023/utils";
+import { to } from "@nickyzj2023/utils";
 import type { Message, Model } from "../../types.js";
 import { estimateTokens } from "../helper.js";
 import { findToolGroupRange } from "./helper.js";
 import {
 	compactMediaMessages,
 	compactToolResults,
-	hardDeleteOldMessages,
+	discardMessagesUntil,
 	summarizeMessages,
 } from "./strategy.js";
 import type { Compact } from "./types.js";
@@ -15,7 +15,7 @@ const compactMethods = {
 	compactToolResults,
 	compactMediaMessages,
 	summarizeMessages,
-	hardDeleteOldMessages,
+	discardMessagesUntil,
 };
 
 /**
@@ -48,7 +48,7 @@ export const compact = Object.assign(
 			hasCompactedToolResults: false,
 			hasCompactedMedia: false,
 			hasSummarized: false,
-			hasDeletedOldMessages: false,
+			hasDiscardMessages: false,
 		};
 
 		// 根据keepCount切割上下文：
@@ -70,7 +70,7 @@ export const compact = Object.assign(
 				}
 			}
 		}
-		endIndex = Math.max(startIndex, messages.length - keepCount);
+		endIndex = Math.max(startIndex, endIndex);
 
 		// 安全切割
 		const reservedStart = messages.slice(0, startIndex);
@@ -79,21 +79,21 @@ export const compact = Object.assign(
 
 		// 上下文 > 总上下文*60% => 压缩工具调用结果
 		if (tokens > context * ratioToCompactToolResults) {
-			await compactToolResults(compressible, {
+			const count = await compactToolResults(compressible, {
 				replacer: replacerOfToolResultContent,
 				mark: compactedMessageMark,
 				model,
 			});
-			result.hasCompactedToolResults = true;
+			result.hasCompactedToolResults = count > 0;
 		}
 
 		// 上下文 > 总上下文*70% => 压缩图片/音频/视频消息
 		if (tokens > context * ratioToCompactMedia) {
-			await compactMediaMessages(compressible, {
+			const count = await compactMediaMessages(compressible, {
 				replacer: replacerOfMediaContent,
 				model,
 			});
-			result.hasCompactedMedia = true;
+			result.hasCompactedMedia = count > 0;
 		}
 
 		// 上下文 > 总上下文*80% => 总结消息
@@ -101,19 +101,28 @@ export const compact = Object.assign(
 			const { systemPrompt = "你现在的任务是总结历史消息" } =
 				summarizeOptions ?? {};
 
-			const [error] = await to(
+			const [error, count] = await to(
 				summarizeMessages(compressible, { model, systemPrompt }),
 			);
 			if (!error) {
-				result.hasSummarized = true;
+				result.hasSummarized = count > 0;
 			} else {
-				// 总结失败，作为兜底硬删除压缩区较早的消息
-				logger(`总结失败（${error.message}），改用硬删除兜底`);
-				hardDeleteOldMessages(compressible);
-				result.hasDeletedOldMessages = true;
+				// 如果总结失败，则丢弃旧消息，直到estimateTokens小于阈值（或把compressible删光）
+				const count = discardMessagesUntil(compressible, (compressible) => {
+					if (compressible.length === 0) {
+						return true;
+					}
+					const tempMessages = [
+						...reservedStart,
+						...compressible,
+						...reservedEnd,
+					];
+					return estimateTokens(tempMessages) < context * ratioToSummarize;
+				});
+				result.hasDiscardMessages = count > 0;
 			}
 
-			// 总结/硬删除会改变compressible，需要更新原数组
+			// 总结/硬删除消息会改变compressible，需要更新原数组
 			messages.splice(
 				0,
 				Infinity,
