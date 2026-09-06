@@ -8,6 +8,7 @@ import {
 	getWeather,
 	type Message,
 	runAgent,
+	type ToolDefinition,
 } from "./index.js";
 import { runSetup } from "./interfaces/setup.js";
 import { TUI } from "./interfaces/tui.js";
@@ -26,16 +27,28 @@ const startChat = async () => {
 	// 2. 组装模型配置
 	const model = defineModel(config);
 
-	// 3. 组装上下文
+	// 3. 后台加载MCP工具：不await，先启动TUI让用户自由输入，首个请求发出前才等待加载完成
+	let mcpReady = false;
+	const mcpLoading = loadMCPTools(config.mcpServers).then((tools) => {
+		mcpReady = true;
+		return tools;
+	});
+
+	// 4. 组装上下文
 	const messages: Message[] = [];
 
-	// 4. 组装工具
-	const mcpTools = await loadMCPTools(config.mcpServers);
-	const tools = [getWeather, getTime, ...mcpTools];
+	// 5. 工具列表在会话中保持不变，首次请求时组装一次后复用
+	let tools: ToolDefinition[] | null = null;
 
-	// 5. 启动TUI，监听用户输入，按下回车后调用Agent
+	// 6. 启动TUI，监听用户输入，按下回车后调用Agent
 	const tui = new TUI(async (input) => {
 		messages.push({ role: "user", content: input });
+
+		// 7. 发出请求前等待MCP加载完成
+		if (!mcpReady) {
+			tui.printStatus("等待MCP工具加载完成…");
+		}
+		tools ??= [getWeather, getTime, ...(await mcpLoading)];
 
 		for await (const e of runAgent(model, messages, tools)) {
 			switch (e.type) {

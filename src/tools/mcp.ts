@@ -95,9 +95,8 @@ export const loadMCPTools = async (mcpServers: Record<string, McpServer>) => {
 					server.url,
 					omit(server, ["type", "url"]),
 				);
-				logger(`已激活MCP客户端：${name}`);
 			} catch (e) {
-				logger(`MCP服务器${name}连接失败，跳过：${extractErrorMessage(e)}`);
+				logger(`MCP服务器${name}加载失败：${extractErrorMessage(e)}`);
 			}
 		}),
 	);

@@ -167,4 +167,11 @@ export class TUI {
 			),
 		);
 	}
+
+	/**
+	 * 打印一行黄色状态提示（如“等待MCP工具加载完成…”）
+	 */
+	printStatus(message: string) {
+		process.stdout.write(this.colorize(message, "93"));
+	}
 }
