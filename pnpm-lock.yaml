@@ -17,6 +17,9 @@ importers:
       '@nickyzj2023/utils':
         specifier: link:../utils
         version: link:../utils
+      '@wterm/markdown':
+        specifier: ^0.5.0
+        version: 0.5.0
     devDependencies:
       '@biomejs/biome':
         specifier: ^2.5.12
@@ -333,6 +336,9 @@ packages:
     engines: {node: '>=16.20.0'}
     cpu: [x64]
     os: [win32]
+
+  '@wterm/markdown@0.5.0':
+    resolution: {integrity: sha512-TaocvkDbyv+uVPDkYv9tJCpRvafH129HJ3N13zXmnJxucovUuAxEjrR/abcYaM0HceFoa8NrcM4TaBsOM5JJuw==}
 
   '@yuku-codegen/binding-android-arm64@0.8.7':
     resolution: {integrity: sha512-C/0zV5IhgVdYhGJTwrY0v8dknxlhiKwtVJkMUaexu9/QvRmzlV4vfU3hZlUSgqc2BxQHntL1mCVbDq8j0FRFDw==}
@@ -1154,6 +1160,8 @@ snapshots:
 
   '@typescript/typescript-win32-x64@7.0.2':
     optional: true
+
+  '@wterm/markdown@0.5.0': {}
 
   '@yuku-codegen/binding-android-arm64@0.8.7':
     optional: true

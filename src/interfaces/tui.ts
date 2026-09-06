@@ -4,11 +4,15 @@
 
 import readline from "node:readline";
 import { compactStr } from "@nickyzj2023/utils";
+import { MarkdownRenderer } from "@wterm/markdown";
 import type { AgentEvent, FinishReason, Usage } from "../types.js";
 
 export class TUI {
 	private rl: readline.Interface | null = null;
 	private onPrompt: ((prompt: string) => void | Promise<void>) | null = null;
+
+	/** content专用的markdown渲染器 */
+	private md: MarkdownRenderer | null = null;
 
 	/** 是否允许输入 */
 	private isBusy = false;
@@ -64,13 +68,25 @@ export class TUI {
 	}
 
 	/**
-	 * 所有print方法调用前的统一入口（相当于“父类逻辑”）：
-	 * 状态切换时打印换行，并记录当前状态。
+	 * 所有print方法调用前：
+	 * 状态切换时打印换行，并记录当前状态
 	 * @returns 是否发生了状态切换
 	 */
 	private preparePrint(type: AgentEvent["type"]): boolean {
+		// 状态无变化，跳过
 		if (this.prevPrintType === type) {
 			return false;
+		}
+		// 初始化MarkdownRenderer实例
+		if (type === "content_delta" && this.md === null) {
+			this.md = new MarkdownRenderer();
+		}
+		// 离开content状态前，确保md(content)已经输出干净
+		if (this.prevPrintType === "content_delta") {
+			const remaining = this.md?.flush();
+			if (remaining) {
+				process.stdout.write(remaining);
+			}
 		}
 		process.stdout.write("\n");
 		this.prevPrintType = type;
@@ -100,7 +116,10 @@ export class TUI {
 	/** 流式打印AI回复内容 */
 	printContent(delta: string) {
 		this.preparePrint("content_delta");
-		process.stdout.write(delta);
+		const rendered = this.md?.push(delta);
+		if (rendered) {
+			process.stdout.write(rendered);
+		}
 	}
 
 	/** 打印工具调用 */
