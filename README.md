@@ -1,6 +1,10 @@
 # ai
 
-男生自用MyPi Coding Agent
+男生自用Coding Agent，参考了[nanopi教学](https://pi-from-scratch.vercel.app/)
+
+不断学习+开发中，当前项目仍属于比nano还简陋的“bare-pi”，but one day...
+
+![demo](demo.gif)
 
 ## 安装
 
