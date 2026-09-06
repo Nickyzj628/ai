@@ -1,6 +1,6 @@
 {
 	"name": "@nickyzj2023/ai",
-	"version": "1.4.1",
+	"version": "1.4.2",
 	"description": "我的“pi”，参考了pi-from-scratch",
 	"type": "module",
 	"main": "./dist/index.mjs",
@@ -39,7 +39,7 @@
 	},
 	"dependencies": {
 		"@modelcontextprotocol/sdk": "^1.30.0",
-		"@nickyzj2023/utils": "link:../utils",
+		"@nickyzj2023/utils": "^1.0.95",
 		"@wterm/markdown": "^0.5.0"
 	}
 }
