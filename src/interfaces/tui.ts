@@ -3,6 +3,7 @@
 // ================================
 
 import readline from "node:readline";
+import { compactStr } from "@nickyzj2023/utils";
 import type { AgentEvent, FinishReason, Usage } from "../types.js";
 
 export class TUI {
@@ -79,7 +80,7 @@ export class TUI {
 	/**
 	 * 为文本添加ANSI颜色；非TTY输出（重定向/管道）时返回原文本，避免日志出现转义码。
 	 * @param text 原始文本
-	 * @param ansiCode ANSI颜色代码，如 "90"（亮黑，大多数终端显示为灰色）
+	 * @param ansiCode ANSI颜色代码，如"90"（亮黑，大多数终端显示为灰色）
 	 */
 	private colorize(text: string, ansiCode: string): string {
 		if (!process.stdout.isTTY) {
@@ -105,13 +106,25 @@ export class TUI {
 	/** 打印工具调用 */
 	printToolCall(name: string, args: any) {
 		this.preparePrint("tool_call");
-		process.stdout.write(`[工具调用：${name}] ${args}`);
+		process.stdout.write(`[工具调用：${name}] ${args}\n`);
 	}
 
 	/** 打印工具结果 */
-	printToolResult(name: string, result: string) {
+	printToolResult(
+		name: string,
+		result: string,
+		options?: {
+			/** 是否省略输出，默认只显示首尾共200字 */
+			ellipsis?: boolean;
+		},
+	) {
+		const { ellipsis = true } = options ?? {};
+		const _result = ellipsis
+			? compactStr(result, { maxLength: 200, truncateMiddle: true })
+			: result;
+
 		this.preparePrint("tool_result");
-		process.stdout.write(this.colorize(`[工具结果：${name}] ${result}`, "90"));
+		process.stdout.write(this.colorize(`[工具结果：${name}] ${_result}\n`, "90"));
 	}
 
 	// 临时写个千分位转换
