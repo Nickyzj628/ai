@@ -124,7 +124,9 @@ export class TUI {
 			: result;
 
 		this.preparePrint("tool_result");
-		process.stdout.write(this.colorize(`[工具结果：${name}] ${_result}\n`, "90"));
+		process.stdout.write(
+			this.colorize(`[工具结果：${name}] ${_result}\n`, "90"),
+		);
 	}
 
 	// 临时写个千分位转换
