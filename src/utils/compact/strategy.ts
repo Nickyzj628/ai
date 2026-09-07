@@ -10,7 +10,7 @@ const defaultReplacerOfToolResultContent: Compact.ReplacerOfToolResultContent =
 		const { model } = options ?? {};
 		const messages: Message[] = [
 			{ role: "user", content },
-			{ role: "user", content: "请用一两句话简述上条消息" },
+			{ role: "user", content: "请用一句话简述上面这条消息（直击要点，不要添加任何前言后语）" },
 		];
 
 		let simplifiedContent = "";
@@ -71,7 +71,7 @@ const defaultReplacerOfMediaContent: Compact.ReplacerOfMediaContent = async (
 	const { model } = options ?? {};
 	const messages: Message[] = [
 		{ role: "user", content },
-		{ role: "user", content: "请用一两句话简述上方的多模态消息" },
+		{ role: "user", content: "请用一句话简述上面这条消息（直击要点，不要添加任何前言后语）" },
 	];
 
 	let simplifiedContent = "";
