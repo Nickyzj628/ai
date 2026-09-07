@@ -11,7 +11,7 @@ export type Config = {
 	baseUrl: string;
 	apiKey: string;
 	model: string;
-	mcpServers: Record<string, McpServer>;
+	mcpServers?: Record<string, McpServer>;
 };
 
 /**

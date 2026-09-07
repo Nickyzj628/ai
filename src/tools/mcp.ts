@@ -83,7 +83,9 @@ export class MCPRouter {
 /**
  * 把传入的MCPServer列表转换成OpenAI API兼容的tools数组
  */
-export const loadMCPTools = async (mcpServers: Record<string, McpServer>) => {
+export const loadMCPTools = async (
+	mcpServers: Record<string, McpServer> = {},
+) => {
 	router ||= new MCPRouter();
 
 	// 并发加载全部MCP工具，其中有失败的也不管
