@@ -17,13 +17,18 @@ const defaultReplacerOfToolResultContent: Compact.ReplacerOfToolResultContent =
 		];
 
 		let simplifiedContent = "";
-		for await (const e of runAgent(model, messages, [])) {
-			if (e.type === "content_delta") {
-				simplifiedContent += e.delta;
-			} else if (e.type === "error") {
-				throw new Error(e.message);
+		if (!model) {
+			simplifiedContent = "工具结果已被消费";
+		} else {
+			for await (const e of runAgent(model, messages, [])) {
+				if (e.type === "content_delta") {
+					simplifiedContent += e.delta;
+				} else if (e.type === "error") {
+					throw new Error(e.message);
+				}
 			}
 		}
+
 		return simplifiedContent;
 	};
 
@@ -71,7 +76,7 @@ const defaultReplacerOfMediaContent: Compact.ReplacerOfMediaContent = async (
 	content,
 	options,
 ) => {
-	const { model } = options ?? {};
+	const { model, modality = "image" } = options ?? {};
 	const messages: Message[] = [
 		{ role: "user", content },
 		{
@@ -81,13 +86,18 @@ const defaultReplacerOfMediaContent: Compact.ReplacerOfMediaContent = async (
 	];
 
 	let simplifiedContent = "";
-	for await (const e of runAgent(model, messages, [])) {
-		if (e.type === "content_delta") {
-			simplifiedContent += e.delta;
-		} else if (e.type === "error") {
-			throw new Error(e.message);
+	if (!model?.modalities?.includes(modality)) {
+		simplifiedContent = "媒体资源已被消费";
+	} else {
+		for await (const e of runAgent(model, messages, [])) {
+			if (e.type === "content_delta") {
+				simplifiedContent += e.delta;
+			} else if (e.type === "error") {
+				throw new Error(e.message);
+			}
 		}
 	}
+
 	return simplifiedContent;
 };
 
@@ -112,8 +122,12 @@ export const compactMediaMessages = async (
 
 	let count = 0;
 	for (const message of compressible) {
-		if (isMediaMessage(message)) {
-			const compacted = await _replacer(message.content, { model });
+		const mediaModality = isMediaMessage(message);
+		if (mediaModality) {
+			const compacted = await _replacer(message.content, {
+				model,
+				modality: mediaModality,
+			});
 			message.content = createXMLText("media", compacted);
 			count++;
 		}

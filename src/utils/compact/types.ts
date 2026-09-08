@@ -1,4 +1,4 @@
-import type { Message, Model, Usage } from "../../types.js";
+import type { Message, Modality, Model, Usage } from "../../types.js";
 
 export namespace Compact {
 	export type Options = {
@@ -55,12 +55,19 @@ export namespace Compact {
 
 	export type ReplacerOfToolResultContent = (
 		content: Message["content"],
-		options?: Record<string, any>,
+		options?: {
+			model?: Model;
+			[key: string]: any;
+		},
 	) => Promise<string> | string;
 
 	export type ReplacerOfMediaContent = (
 		content: Message["content"],
-		options?: Record<string, any>,
+		options?: {
+			model?: Model;
+			modality?: Modality;
+			[key: string]: any;
+		},
 	) => Promise<string> | string;
 
 	export type SummarizeOptions = {

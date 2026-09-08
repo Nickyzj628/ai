@@ -11,13 +11,13 @@ export const isToolCalls = (message?: Message) => {
  * 校验多模态消息
  */
 export const isMediaMessage = (message?: Message) => {
-	const MEDIA_TYPES = ["image_url", "input_audio", "video_url"];
-
-	return (
-		message &&
-		Array.isArray(message.content) &&
-		message.content.some((part) => MEDIA_TYPES.includes(part.type))
-	);
+	if (message && Array.isArray(message.content)) {
+		for (const part of message.content) {
+			if (part.type === "image_url") return "image";
+			if (part.type === "input_audio") return "audio";
+			if (part.type === "video_url") return "video";
+		}
+	}
 };
 
 /**
