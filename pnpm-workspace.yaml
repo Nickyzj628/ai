@@ -1,3 +1,0 @@
-# 本地开发时把 utils 依赖重定向到本地源码目录，发布后消费者从 registry 安装 package.json 中声明的 npm 版本
-overrides:
-  '@nickyzj2023/utils': link:../utils

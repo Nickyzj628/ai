@@ -1,6 +1,9 @@
 node_modules
 dist
 .npmrc
+# 本地开发状态：utils 重定向配置与配套锁文件只存在于当前机器，不随仓库分发
+pnpm-workspace.yaml
+pnpm-lock.yaml
 .env
 test.ts
 .reasonix
