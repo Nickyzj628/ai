@@ -59,7 +59,7 @@ export async function* runAgent(
 					// 若模型未返回用量，则估算一个
 					if (!e.usage) {
 						const promptTokens = estimateTokens(promptMessage);
-						const completionTokens = estimateTextTokens(content);
+						const completionTokens = estimateTextTokens(content + reasoning);
 						e.usage = {
 							prompt_tokens: promptTokens,
 							completion_tokens: completionTokens,

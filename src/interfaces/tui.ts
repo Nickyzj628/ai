@@ -2,14 +2,40 @@
 // 终端UI
 // ================================
 
+import type { Key } from "node:readline";
 import readline from "node:readline";
 import { compactStr } from "@nickyzj2023/utils";
 import { MarkdownRenderer } from "@wterm/markdown";
-import type { AgentEvent, FinishReason, Usage } from "../types.js";
+import type {
+	AgentEvent,
+	FinishReason,
+	ImageContent,
+	Usage,
+} from "../types.js";
+import {
+	MAX_CLIPBOARD_IMAGE_BYTES,
+	readClipboardImage,
+} from "../utils/clipboard.js";
+import { humanizeNumber } from "../utils/internalHelper.js";
+
+/** 用户的一次输入：文本 + 通过Ctrl+V粘贴的图片 */
+export type UserInput = {
+	text: string;
+	images: ImageContent[];
+};
 
 export class TUI {
 	private rl: readline.Interface | null = null;
-	private onPrompt: ((prompt: string) => void | Promise<void>) | null = null;
+	private onPrompt: ((input: UserInput) => void | Promise<void>) | null = null;
+
+	/**
+	 * 已粘贴、等待随下次请求一起发出的图片
+	 * TODO: 改为pendingMedias
+	 */
+	private pendingImages: ImageContent[] = [];
+
+	/** 剪贴板读取是异步的，回车时要先等它结束，避免漏掉刚粘贴的图片 */
+	private clipboardTask: Promise<void> = Promise.resolve();
 
 	/** content专用的markdown渲染器 */
 	private md: MarkdownRenderer | null = null;
@@ -26,7 +52,7 @@ export class TUI {
 	 * 实例化TUI时，接收一个“发出用户提示词”的回调函数
 	 * UI只做UI的事，提示词发给谁让调用方决定
 	 */
-	constructor(onPrompt: (prompt: string) => void | Promise<void>) {
+	constructor(onPrompt: (input: UserInput) => void | Promise<void>) {
 		this.onPrompt = onPrompt;
 	}
 
@@ -36,14 +62,28 @@ export class TUI {
 			input: process.stdin,
 			output: process.stdout,
 		});
+		process.stdin.on("keypress", this.onKeypress);
 		this.prompting();
 
 		// 停止TUI后，清理残留的监听事件
 		this.rl.on("close", () => {
+			process.stdin.off("keypress", this.onKeypress);
 			this.rl?.close();
 			this.rl = null;
 		});
 	}
+
+	/** 监听用户的特定按键 */
+	private onKeypress = (_str: string, key: Key) => {
+		if (this.isBusy) {
+			return;
+		}
+		// 拦截Ctrl+V：读取剪贴板里的图片，随着下次请求一起发出
+		// 剪贴板读取是异步的，这里不阻塞readline的按键处理，只排队执行
+		if (key?.ctrl && key?.name === "v") {
+			this.clipboardTask = this.clipboardTask.then(() => this.attachImage());
+		}
+	};
 
 	/** 监听用户输入 */
 	private prompting() {
@@ -52,19 +92,44 @@ export class TUI {
 		}
 
 		this.rl?.question("> ", async (answer) => {
-			const input = answer.trim();
-			// 如果输入为空，则重新question
-			if (!input) {
+			// 等待Ctrl+V触发的剪贴板读取结束，避免刚粘贴的图片被漏掉
+			await this.clipboardTask;
+
+			const text = answer.trim();
+			const images = this.pendingImages;
+			this.pendingImages = [];
+
+			// 没有文本也没有图片，则重新question
+			if (!text && images.length === 0) {
 				this.prompting();
 				return;
 			}
 
 			this.isBusy = true;
-			await this.onPrompt?.(input);
+			await this.onPrompt?.({ text, images });
 			this.isBusy = false;
 
 			this.prompting();
 		});
+	}
+
+	/** 读取剪贴板图片，推入待发送列表 */
+	private async attachImage() {
+		const image = await readClipboardImage();
+		if (!image) {
+			this.printNotice("[剪贴板中没有图片]");
+			return;
+		}
+		if (image.bytes > MAX_CLIPBOARD_IMAGE_BYTES) {
+			this.printNotice(`[图片过大（${humanizeNumber(image.bytes)}B），已忽略]`);
+			return;
+		}
+
+		this.pendingImages.push({
+			type: "image_url",
+			image_url: { url: image.url },
+		});
+		this.printNotice(`[已粘贴图片：共${this.pendingImages.length}张]`);
 	}
 
 	/**
@@ -148,30 +213,20 @@ export class TUI {
 		);
 	}
 
-	// 临时写个千分位转换
-	private formatter = new Intl.NumberFormat("en-US", {
-		notation: "compact",
-		maximumFractionDigits: 1,
-	});
-	private format(number: number) {
-		return this.formatter.format(number);
-	}
-
 	/** 打印轮次结束原因、token消耗 */
 	printFinish(finishReason: FinishReason, usage?: Usage) {
 		this.preparePrint("done");
 		process.stdout.write(
 			this.colorize(
-				`[本轮结束：${finishReason}] ${usage ? `输入${this.format(usage.prompt_tokens)}，输出${this.format(usage.completion_tokens)}，总共${this.format(usage.total_tokens)}` : ""}${finishReason === "stop" ? "\n\n" : "\n"}`,
+				`[本轮结束：${finishReason}] ${usage ? `输入${humanizeNumber(usage.prompt_tokens)}，输出${humanizeNumber(usage.completion_tokens)}，总共${humanizeNumber(usage.total_tokens)}` : ""}${finishReason === "stop" ? "\n\n" : "\n"}`,
 				"90",
 			),
 		);
 	}
 
-	/**
-	 * 打印一行黄色状态提示（如“等待MCP工具加载完成…”）
-	 */
-	printStatus(message: string) {
-		process.stdout.write(this.colorize(message, "93"));
+	/** 打印一行黄字提示，并重绘当前输入行 */
+	printNotice(message: string) {
+		process.stdout.write(`${this.colorize(message, "93")}\n`);
+		this.rl?.prompt(true);
 	}
 }
