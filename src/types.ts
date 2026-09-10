@@ -156,6 +156,8 @@ export type Usage = {
 	prompt_tokens: number;
 	completion_tokens: number;
 	total_tokens: number;
+	/** 每秒生成多少个token */
+	speed?: number;
 	[key: string]: any;
 };
 

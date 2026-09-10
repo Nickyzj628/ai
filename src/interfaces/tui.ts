@@ -218,7 +218,7 @@ export class TUI {
 		this.preparePrint("done");
 		process.stdout.write(
 			this.colorize(
-				`[本轮结束：${finishReason}] ${usage ? `输入${humanizeNumber(usage.prompt_tokens)}，输出${humanizeNumber(usage.completion_tokens)}，总共${humanizeNumber(usage.total_tokens)}` : ""}${finishReason === "stop" ? "\n\n" : "\n"}`,
+				`[本轮结束：${finishReason}] ${usage ? `输入${humanizeNumber(usage.prompt_tokens)}，输出${humanizeNumber(usage.completion_tokens)}，总共${humanizeNumber(usage.total_tokens)}` : ""}${usage?.speed ? `，速度${usage.speed}/秒` : ""}${finishReason === "stop" ? "\n\n" : "\n"}`,
 				"90",
 			),
 		);

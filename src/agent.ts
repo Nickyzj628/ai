@@ -27,7 +27,9 @@ export async function* runAgent(
 		const toolCalls: ToolCall[] = [];
 		const promptMessage = messages.slice(-1);
 
+		let startTime = 0;
 		for await (const e of stream(model, messages, tools)) {
+			startTime ||= Date.now();
 			switch (e.type) {
 				case "reasoning_delta": {
 					reasoning += e.delta;
@@ -67,6 +69,10 @@ export async function* runAgent(
 								estimateTokens(messages) + promptTokens + completionTokens,
 						};
 					}
+					// 计算本轮回复速度
+					e.usage.speed = Math.floor(
+						e.usage.completion_tokens / ((Date.now() - startTime) / 1000),
+					);
 					yield e;
 					break;
 				}
