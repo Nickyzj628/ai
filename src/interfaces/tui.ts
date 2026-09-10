@@ -162,7 +162,7 @@ export class TUI {
 		this.preparePrint("done");
 		process.stdout.write(
 			this.colorize(
-				`[本轮结束：${finishReason}] ${usage ? `输入${this.format(usage.prompt_tokens)}token，输出${this.format(usage.completion_tokens)}token，总共${this.format(usage.total_tokens)}token` : ""}${finishReason === "stop" ? "\n\n" : "\n"}`,
+				`[本轮结束：${finishReason}] ${usage ? `输入${this.format(usage.prompt_tokens)}，输出${this.format(usage.completion_tokens)}，总共${this.format(usage.total_tokens)}` : ""}${finishReason === "stop" ? "\n\n" : "\n"}`,
 				"90",
 			),
 		);

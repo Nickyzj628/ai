@@ -11,6 +11,7 @@ import type {
 	ToolCall,
 	ToolDefinition,
 } from "./types.js";
+import { estimateTextTokens, estimateTokens } from "./utils/helper.js";
 
 export async function* runAgent(
 	model: Model,
@@ -22,11 +23,14 @@ export async function* runAgent(
 	while (true) {
 		// 1. 流式调用大模型，收集回复内容
 		let content = "";
+		let reasoning = "";
 		const toolCalls: ToolCall[] = [];
+		const promptMessage = messages.slice(-1);
 
 		for await (const e of stream(model, messages, tools)) {
 			switch (e.type) {
 				case "reasoning_delta": {
+					reasoning += e.delta;
 					yield e;
 					break;
 				}
@@ -52,6 +56,17 @@ export async function* runAgent(
 					break;
 				}
 				case "done": {
+					// 若模型未返回用量，则估算一个
+					if (!e.usage) {
+						const promptTokens = estimateTokens(promptMessage);
+						const completionTokens = estimateTextTokens(content);
+						e.usage = {
+							prompt_tokens: promptTokens,
+							completion_tokens: completionTokens,
+							total_tokens:
+								estimateTokens(messages) + promptTokens + completionTokens,
+						};
+					}
 					yield e;
 					break;
 				}
