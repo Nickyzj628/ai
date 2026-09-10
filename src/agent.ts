@@ -47,6 +47,10 @@ export async function* runAgent(
 					yield e;
 					break;
 				}
+				case "error": {
+					yield e;
+					break;
+				}
 				case "done": {
 					yield e;
 					break;
