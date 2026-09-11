@@ -6,4 +6,9 @@ export { runAgent } from "./agent.js";
 export * from "./tools/index.js";
 export type * from "./types.js";
 export { compact } from "./utils/compact/index.js";
-export { defineModel, defineTool, estimateTokens } from "./utils/helper.js";
+export {
+	defineModel,
+	defineTool,
+	estimateTextTokens,
+	estimateTokens,
+} from "./utils/helper.js";
