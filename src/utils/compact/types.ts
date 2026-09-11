@@ -74,6 +74,8 @@ export namespace Compact {
 		/** 指导大模型如何总结消息 */
 		systemPrompt: string;
 		model: Model;
+		/** 触发总结前的钩子 */
+		beforeSummarize?: () => void | Promise<void>;
 	};
 
 	export type Result = {

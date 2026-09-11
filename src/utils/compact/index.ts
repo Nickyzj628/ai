@@ -98,9 +98,10 @@ export const compact = Object.assign(
 
 		// 上下文 > 总上下文*80% => 总结消息
 		if (tokens > context * ratioToSummarize) {
-			const { systemPrompt = "你现在的任务是总结历史消息" } =
+			const { systemPrompt = "你现在的任务是总结历史消息",beforeSummarize } =
 				summarizeOptions ?? {};
 
+			await beforeSummarize?.();
 			const [error, count] = await to(
 				summarizeMessages(compressible, { model, systemPrompt }),
 			);
