@@ -75,7 +75,7 @@ export namespace Compact {
 		systemPrompt: string;
 		model: Model;
 		/** 触发总结前的钩子 */
-		beforeSummarize?: () => void | Promise<void>;
+		beforeSummarize?: (summarizable: Message[]) => void | Promise<void>;
 	};
 
 	export type Result = {

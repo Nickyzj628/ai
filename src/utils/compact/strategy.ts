@@ -142,7 +142,7 @@ export const summarizeMessages = async (
 	compressible: Message[],
 	options: Compact.SummarizeOptions,
 ) => {
-	const { model, systemPrompt } = options ?? {};
+	const { model, systemPrompt, beforeSummarize } = options ?? {};
 
 	// 消息太少不总结
 	const summarizable = compressible.slice(1);
@@ -150,6 +150,7 @@ export const summarizeMessages = async (
 		logger("消息太少，无需总结");
 		return 0;
 	}
+	beforeSummarize?.(summarizable);
 
 	const count = summarizable.length;
 	summarizable.push(
