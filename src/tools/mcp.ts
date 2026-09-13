@@ -1,5 +1,4 @@
-import { Client } from "@modelcontextprotocol/sdk/client";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import type { Client } from "@modelcontextprotocol/sdk/client";
 import {
 	extractErrorMessage,
 	isObject,
@@ -35,6 +34,12 @@ export class MCPRouter {
 		if (this.entries.has(name)) {
 			return;
 		}
+
+		// 使用动态import，防止外部项目安装本依赖时，即使mcp sdk没用到也被打进包里（200kb）
+		const [{ Client }, { StreamableHTTPClientTransport }] = await Promise.all([
+			import("@modelcontextprotocol/sdk/client"),
+			import("@modelcontextprotocol/sdk/client/streamableHttp.js"),
+		]);
 
 		const transport = new StreamableHTTPClientTransport(new URL(url), {
 			requestInit: { headers: options?.headers },
