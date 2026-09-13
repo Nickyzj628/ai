@@ -49,7 +49,7 @@ export async function* stream(
 	model: Model,
 	messages: Message[],
 	tools: ToolDefinition[] = [],
-	options?: RequestInit & { body?: any },
+	options?: Omit<RequestInit, "body"> & { body?: Record<string, unknown> },
 ): AsyncGenerator<LLMEvent> {
 	// 剥离ToolDefinition里的私有字段/语法糖
 	const validTools = tools.map((tool) => detachToolArguments(tool)[0]);
