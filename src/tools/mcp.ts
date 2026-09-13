@@ -35,7 +35,7 @@ export class MCPRouter {
 			return;
 		}
 
-		// 使用动态import，防止外部项目安装本依赖时，即使mcp sdk没用到也被打进包里（200kb）
+		// 动态加载sdk：保持下游懒加载（不用addClient就不加载283kb），也避免拖慢CLI启动
 		const [{ Client }, { StreamableHTTPClientTransport }] = await Promise.all([
 			import("@modelcontextprotocol/sdk/client"),
 			import("@modelcontextprotocol/sdk/client/streamableHttp.js"),

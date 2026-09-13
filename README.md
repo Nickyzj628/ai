@@ -25,6 +25,8 @@ pnpm add @nickyzj2023/ai
 
 ```typescript
 import { defineModel, runAgent, getWeather } from "@nickyzj2023/ai";
+// MCP体积较大（200kb），有需要时单独引入
+import { loadMCPTools } from "@nickyzj2023/ai/mcp";
 
 const model = defineModel({
   baseUrl: "https://api.deepseek.com/v1",
@@ -36,8 +38,22 @@ const tools = [
   // 内置工具
   getWeather,
   getTime,
+  // MCP工具
+  ..(await loadMCPTools({
+    exa: {
+			type: "streamable_http",
+			url: "https://mcp.exa.ai/mcp",
+			headers: {
+				"x-api-key": "xxxxx",
+			},
+		}
+  })),
   // 自定义工具
-  defineTool("getRandomNumber", "生成随机数字", {min: {type: "number", description: "最小区间"}, max: {type:"number", description:"最大区间"}}, () => 33550336),
+  defineTool("skipReply", "跳过本轮回复", {reason: {type: "string", description: "不回复的理由"}}, () => {
+    const error = new Error(`模型保持沉默，理由：${reason}`);
+		error.name = "skipReply";
+		throw error;
+  }),
 ];
 
 const messages = [{ role: "user", content: "随机一个负无穷到正无穷的整数" }];
