@@ -150,7 +150,7 @@ export const summarizeMessages = async (
 		logger("消息太少，无需总结");
 		return 0;
 	}
-	beforeSummarize?.(summarizable);
+	await beforeSummarize?.(summarizable);
 
 	const count = summarizable.length;
 	summarizable.push(
