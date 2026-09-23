@@ -43,6 +43,9 @@ export class TUI {
 	/** 是否允许输入 */
 	private isBusy = false;
 
+	/** 是否正停在提示符上等输入（决定printNotice要不要重绘提示符） */
+	private isPrompting = false;
+
 	/** 上次打印内容所属的状态（reasoning/content/tool）
 	 * 用于在新的状态开始时改变样式、打印前缀
 	 */
@@ -56,14 +59,16 @@ export class TUI {
 		this.onPrompt = onPrompt;
 	}
 
-	/** 启动TUI */
-	start() {
+	/**
+	 * 启动TUI
+	 * @param initialPrompt 传入时先替用户发出这一轮（ai “提示词”的快捷方式），之后照常等输入
+	 */
+	start(initialPrompt?: string) {
 		this.rl = readline.createInterface({
 			input: process.stdin,
 			output: process.stdout,
 		});
 		process.stdin.on("keypress", this.onKeypress);
-		this.prompting();
 
 		// 停止TUI后，清理残留的监听事件
 		this.rl.on("close", () => {
@@ -71,6 +76,14 @@ export class TUI {
 			this.rl?.close();
 			this.rl = null;
 		});
+
+		if (initialPrompt) {
+			// 把这行回显出来，观感跟用户自己敲回车一样
+			process.stdout.write(`> ${initialPrompt}\n`);
+			void this.submit({ text: initialPrompt, images: [] });
+		} else {
+			this.prompting();
+		}
 	}
 
 	/** 监听用户的特定按键 */
@@ -91,7 +104,10 @@ export class TUI {
 			return;
 		}
 
+		this.isPrompting = true;
 		this.rl?.question("> ", async (answer) => {
+			this.isPrompting = false;
+
 			// 等待Ctrl+V触发的剪贴板读取结束，避免刚粘贴的图片被漏掉
 			await this.clipboardTask;
 
@@ -105,12 +121,20 @@ export class TUI {
 				return;
 			}
 
-			this.isBusy = true;
-			await this.onPrompt?.({ text, images });
-			this.isBusy = false;
-
-			this.prompting();
+			await this.submit({ text, images });
 		});
+	}
+
+	/**
+	 * 走完整的一轮：把输入交给调用方，结束后继续等用户输入
+	 * @remarks 提示词来源可以是用户敲的，也可以是start()传进来的initialPrompt
+	 */
+	private async submit(input: UserInput) {
+		this.isBusy = true;
+		await this.onPrompt?.(input);
+		this.isBusy = false;
+
+		this.prompting();
 	}
 
 	/** 读取剪贴板图片，推入待发送列表 */
@@ -170,6 +194,36 @@ export class TUI {
 		return `\x1b[${ansiCode}m${text}\x1b[0m`;
 	}
 
+	/** 把一个Agent事件分发到对应的print方法上 */
+	render(event: AgentEvent) {
+		switch (event.type) {
+			case "reasoning_delta": {
+				this.printReasoning(event.delta);
+				break;
+			}
+			case "content_delta": {
+				this.printContent(event.delta);
+				break;
+			}
+			case "tool_call": {
+				this.printToolCall(event.name, event.args);
+				break;
+			}
+			case "tool_result": {
+				this.printToolResult(event.name, event.result);
+				break;
+			}
+			case "error": {
+				this.printContent(event.message);
+				break;
+			}
+			case "done": {
+				this.printFinish(event.finishReason, event.usage);
+				break;
+			}
+		}
+	}
+
 	/** 流式打印AI思考内容（灰色） */
 	printReasoning(delta: string) {
 		if (this.preparePrint("reasoning_delta")) {
@@ -224,9 +278,11 @@ export class TUI {
 		);
 	}
 
-	/** 打印一行黄字提示，并重绘当前输入行 */
+	/** 打印一行黄字提示，正停在提示符上时顺便重绘输入行 */
 	printNotice(message: string) {
 		process.stdout.write(`${this.colorize(message, "93")}\n`);
-		this.rl?.prompt(true);
+		if (this.isPrompting) {
+			this.rl?.prompt(true);
+		}
 	}
 }

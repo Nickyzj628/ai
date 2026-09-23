@@ -1,5 +1,5 @@
 // ================================
-// CLI入口：ai [setup | --help]，不带参数时直接进入对话
+// CLI入口：ai [setup | --help | 一段提示词]，带提示词时直接开聊
 // ================================
 
 import {
@@ -37,8 +37,11 @@ const buildUserContent = (
 	return content;
 };
 
-/** 启动交互对话：配置来自全局配置文件，环境变量可临时覆盖 */
-const startChat = async () => {
+/**
+ * 启动交互对话：配置来自全局配置文件，环境变量可临时覆盖
+ * @param prompt 带上提示词时，先自动发出这一轮，之后照常继续对话
+ */
+const startChat = async (prompt?: string) => {
 	// 1. 读取配置
 	const config = loadConfig();
 	if (!config) {
@@ -81,50 +84,29 @@ const startChat = async () => {
 		tools ??= [getWeather, getTime, ...(await mcpLoading)];
 
 		for await (const e of runAgent(model, messages, tools)) {
-			switch (e.type) {
-				case "reasoning_delta": {
-					tui.printReasoning(e.delta);
-					break;
-				}
-				case "content_delta": {
-					tui.printContent(e.delta);
-					break;
-				}
-				case "tool_call": {
-					tui.printToolCall(e.name, e.args);
-					break;
-				}
-				case "tool_result": {
-					tui.printToolResult(e.name, e.result);
-					break;
-				}
-				case "error": {
-					tui.printContent(e.message);
-					break;
-				}
-				case "done": {
-					tui.printFinish(e.finishReason, e.usage);
-					break;
-				}
-			}
+			tui.render(e);
 		}
 	});
-	tui.start();
+	tui.start(prompt);
 };
 
 /** 打印命令用法 */
 const printHelp = () => {
-	console.log(`用法: ai [命令]
+	console.log(`用法: ai [命令/提示词]
 
 	命令:
   --help    显示帮助
   setup     交互式配置模型APIKEY / BASE_URL / MODEL（保存到 ~/.@nickyzj2023/ai/config.json）
 
-不带命令则启动对话`);
+带上提示词时，启动对话的同时先把这段提示词发出去（如\`ai 明天适合洗车吗\`）
+不带参数则直接进入对话`);
 };
 
+// 命令行参数（已去掉node和脚本路径）：多词提示词会被shell拆成多个参数，这里再拼回一句
+const args = process.argv.slice(2);
+const command = args[0];
+
 // CLI路由，根据命令启动特定interface
-const command = process.argv[2];
 switch (command) {
 	case undefined: {
 		startChat();
@@ -140,7 +122,12 @@ switch (command) {
 		break;
 	}
 	default: {
-		console.error(`未知命令：${command}（可以运行ai --help查看用法）`);
-		process.exit(1);
+		// 以-开头的还是按命令处理，免得把ai --foo当成提示词发出去
+		if (command.startsWith("-")) {
+			console.error(`未知命令：${command}（可以运行ai --help查看用法）`);
+			process.exit(1);
+		}
+		// 多词提示词会被shell拆成多个参数，拼回一句；拼不出来（比如ai ""）就当普通的ai用
+		startChat(args.join(" ").trim() || undefined);
 	}
 }
