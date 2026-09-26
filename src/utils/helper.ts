@@ -2,6 +2,7 @@
 // 通用的便捷方法
 // ================================
 
+import { fetcher } from "@nickyzj2023/utils";
 import type { Message, Model, ToolDefinition } from "../types.js";
 
 /**
@@ -66,6 +67,26 @@ export const estimateTextTokens = (text: string) => {
 		else others++;
 	}
 	return Math.ceil(words * 1.5 + others / 4);
+};
+
+/**
+ * 列出GET /models返回的模型id
+ * @param baseUrl 接口前缀，如http://127.0.0.1:11434/v1
+ * @param apiKey 本地llama.cpp等不校验鉴权的服务可以不传，不传就不带Authorization头
+ * @returns 模型的id列表
+ * @remarks 请求失败（服务没起、鉴权不过等）会抛异常，由调用方自行兜底
+ */
+export const listModels = async (baseUrl: string, apiKey?: string) => {
+	const api = fetcher(baseUrl, {
+		headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : undefined,
+	});
+
+	// 各厂商/data[]里塞的东西差异很大，只取id，其余一概不碰
+	const { data } = await api.get<{ data?: { id?: unknown }[] }>("/models");
+
+	return (data ?? [])
+		.map((model) => model.id)
+		.filter((id): id is string => typeof id === "string");
 };
 
 /**

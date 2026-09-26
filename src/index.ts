@@ -12,4 +12,5 @@ export {
 	defineTool,
 	estimateTextTokens,
 	estimateTokens,
+	listModels,
 } from "./utils/helper.js";

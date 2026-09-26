@@ -3,9 +3,10 @@
 // ================================
 
 import readline from "node:readline";
-import { extractErrorMessage, isObject } from "@nickyzj2023/utils";
+import { extractErrorMessage, isObject, to } from "@nickyzj2023/utils";
 import type { McpServer } from "../tools/mcp.js";
 import { getConfigPath, loadConfig, saveConfig } from "../utils/config.js";
+import { listModels } from "../utils/helper.js";
 
 /**
  * 临时创建readline接口，问答结束就关闭
@@ -122,12 +123,12 @@ const askMcpServer = async (
 };
 
 /**
- * 把菜单输入的数字解析成对应的服务器名称
+ * 把菜单输入的数字解析成对应的名称
  * @param input 用户输入的数字串
- * @param names 当前菜单的服务器名称列表
+ * @param names 当前菜单的名称列表
  * @returns 对应名称；非整数或越界返回undefined
  */
-const pickServerName = (input: string, names: string[]) => {
+const pickByIndex = (input: string, names: string[]) => {
 	const index = Number(input) - 1;
 	return Number.isInteger(index) ? names[index] : undefined;
 };
@@ -175,7 +176,7 @@ const configMcp = async (mcpServers: Record<string, McpServer>) => {
 			case "d": {
 				// 删除不可逆，再输编号确认一次，防止删错
 				const target = (await ask("输入要删除的服务器编号: ")).trim();
-				const oldName = pickServerName(target, names);
+				const oldName = pickByIndex(target, names);
 				if (!oldName) {
 					console.log("无效编号，请输入列表中的数字");
 					break;
@@ -193,7 +194,7 @@ const configMcp = async (mcpServers: Record<string, McpServer>) => {
 			}
 			default: {
 				// 配置可能被手改成null之类的脏数据：提示后进入重新录入，名称沿用
-				const oldName = pickServerName(choice, names);
+				const oldName = pickByIndex(choice, names);
 				if (oldName) {
 					const server = mcpServers[oldName];
 					if (!server) {
@@ -217,19 +218,42 @@ const configMcp = async (mcpServers: Record<string, McpServer>) => {
 };
 
 /**
+ * 询问MODEL：能连上服务时先列出GET /models的模型，输入序号即可选中，同时也支持直接手输模型名
+ * @param baseUrl 刚录入的BASE_URL
+ * @param apiKey 刚录入的APIKEY
+ * @param fallback 直接回车时沿用的模型
+ */
+const askModel = async (
+	baseUrl: string | undefined,
+	apiKey: string | undefined,
+	fallback?: string,
+) => {
+	// 拉不到列表（服务没起、鉴权不过等）不能卡住setup，提示一声后照旧手输
+	const [error, models] = await to(
+		baseUrl ? listModels(baseUrl, apiKey) : Promise.resolve<string[]>([]),
+	);
+	const names = models ?? [];
+	if (error) {
+		console.log(`获取模型列表失败：${extractErrorMessage(error)}`);
+	} else if (names.length === 0) {
+		console.log("服务端未返回任何模型，请手动输入模型名");
+	} else {
+		console.log("可用模型（输入序号快速选择，也可直接输入模型名）：");
+		names.forEach((name, i) => {
+			console.log(`  ${i + 1}. ${name}`);
+		});
+	}
+
+	// 输的是列表里的序号就取对应模型，否则原样当作自定义模型名（空输入沿用原值）
+	const input = (await ask(`MODEL [当前为${fallback}]: `)).trim();
+	return pickByIndex(input, names) || input || fallback;
+};
+
+/**
  * setup入口：依次询问BASE_URL / MODEL / APIKEY，确认后写入全局配置
  */
 export async function runSetup() {
 	const config = loadConfig();
-
-	if (config) {
-		console.log(
-			`当前配置：BASE_URL ${config.baseUrl}，` +
-				`APIKEY ${config.apiKey}，` +
-				`MODEL ${config.model}`,
-		);
-		console.log("直接回车可沿用当前值。\n");
-	}
 
 	const baseUrl =
 		(await ask(`BASE_URL [当前为${config?.baseUrl}]: `)) || config?.baseUrl;
@@ -237,8 +261,8 @@ export async function runSetup() {
 	const apiKey =
 		(await ask(`APIKEY [当前为${config?.apiKey}]: `)) || config?.apiKey;
 
-	const model =
-		(await ask(`MODEL [当前为${config?.model}]: `)) || config?.model;
+	// 模型列表依赖上面两个值，所以放在这里问，用户刚改的地址当场就能拉到
+	const model = await askModel(baseUrl, apiKey, config?.model);
 
 	// MCP配置：询问是否配置，确认后进入编辑菜单
 	const mcpServers = { ...config?.mcpServers };
