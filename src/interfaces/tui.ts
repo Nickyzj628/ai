@@ -258,7 +258,7 @@ export class TUI {
 	) {
 		const { ellipsis = true } = options ?? {};
 		const _result = ellipsis
-			? compactStr(result, { maxLength: 200, truncateMiddle: true })
+			? compactStr(result, { maxLength: 100, truncateMiddle: true })
 			: result;
 
 		this.preparePrint("tool_result");
