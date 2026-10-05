@@ -32,16 +32,17 @@ export async function* runAgent(
 			startTime ||= Date.now();
 			switch (e.type) {
 				case "reasoning_delta": {
-					reasoning += e.delta;
 					yield e;
+					reasoning += e.delta;
 					break;
 				}
 				case "content_delta": {
-					content += e.delta;
 					yield e;
+					content += e.delta;
 					break;
 				}
 				case "tool_call": {
+					yield e;
 					toolCalls.push({
 						id: e.id,
 						type: "function",
@@ -50,7 +51,6 @@ export async function* runAgent(
 							arguments: e.args,
 						},
 					});
-					yield e;
 					break;
 				}
 				case "error": {
