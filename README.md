@@ -24,9 +24,17 @@ pnpm add @nickyzj2023/ai
 ### 在项目里使用
 
 ```typescript
-import { defineModel, runAgent, getWeather } from "@nickyzj2023/ai";
+import { defineModel, runAgent } from "@nickyzj2023/ai";
+// 内置工具已从主入口拆出，按需引入
+import { getTime, getWeather } from "@nickyzj2023/ai/tools";
 // MCP体积较大（200kb），有需要时单独引入
 import { loadMCPTools } from "@nickyzj2023/ai/mcp";
+
+// 也可以按需引入，只加载真正用到的模块（不会带上CLI/TUI或compact等无关代码）
+// import { runAgent } from "@nickyzj2023/ai/agent";
+// import { stream, nonStream } from "@nickyzj2023/ai/llm";
+// import { compact } from "@nickyzj2023/ai/compact";
+// import { getWeather } from "@nickyzj2023/ai/tools/get-weather";
 
 const model = defineModel({
   baseUrl: "https://api.deepseek.com/v1",

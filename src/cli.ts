@@ -5,8 +5,6 @@
 import {
 	type ContentPart,
 	defineModel,
-	getTime,
-	getWeather,
 	type ImageContent,
 	type Message,
 	runAgent,
@@ -14,6 +12,7 @@ import {
 } from "./index.js";
 import { runSetup } from "./interfaces/setup.js";
 import { TUI } from "./interfaces/tui.js";
+import { getTime, getWeather } from "./tools/index.js";
 import { loadMCPTools } from "./tools/mcp.js";
 import { loadConfig } from "./utils/config.js";
 

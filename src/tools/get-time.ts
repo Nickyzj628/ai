@@ -1,7 +1,7 @@
 import { fetcher } from "@nickyzj2023/utils";
 import { defineTool } from "../utils/helper.js";
 
-export default defineTool(
+export const getTime = defineTool(
 	"get_time",
 	"查询指定时区的当前时间",
 	{
@@ -21,3 +21,5 @@ export default defineTool(
 		return api.get("/time/current/zone");
 	},
 );
+
+export default getTime;

@@ -1,6 +1,6 @@
 {
 	"name": "@nickyzj2023/ai",
-	"version": "1.7.0",
+	"version": "1.7.1",
 	"description": "我的“pi”，参考了pi-from-scratch",
 	"type": "module",
 	"main": "./dist/index.mjs",
@@ -10,10 +10,27 @@
 			"types": "./dist/index.d.mts",
 			"import": "./dist/index.mjs"
 		},
+		"./agent": {
+			"types": "./dist/agent.d.mts",
+			"import": "./dist/agent.mjs"
+		},
+		"./llm": {
+			"types": "./dist/llm.d.mts",
+			"import": "./dist/llm.mjs"
+		},
+		"./compact": {
+			"types": "./dist/utils/compact/index.d.mts",
+			"import": "./dist/utils/compact/index.mjs"
+		},
+		"./tools": {
+			"types": "./dist/tools/index.d.mts",
+			"import": "./dist/tools/index.mjs"
+		},
 		"./mcp": {
 			"types": "./dist/tools/mcp.d.mts",
 			"import": "./dist/tools/mcp.mjs"
-		}
+		},
+		"./package.json": "./package.json"
 	},
 	"files": [
 		"dist"
@@ -22,7 +39,7 @@
 		"ai": "./dist/cli.mjs"
 	},
 	"scripts": {
-		"build": "tsdown",
+		"build": "tsdown && node scripts/check-dist.mjs",
 		"check": "biome check --diagnostic-level=error --write src/",
 		"typecheck": "tsc --noEmit",
 		"prepublishOnly": "pnpm run check && pnpm run typecheck && pnpm run build"
@@ -45,5 +62,9 @@
 		"@modelcontextprotocol/sdk": "^1.32.0",
 		"@nickyzj2023/utils": "^1.0.95",
 		"@wterm/markdown": "^0.5.4"
-	}
+	},
+	"sideEffects": [
+		"./dist/cli.mjs",
+		"./dist/interfaces/**"
+	]
 }

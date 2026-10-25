@@ -60,7 +60,7 @@ const pickValuableFields = (rawData: any) => {
 	};
 };
 
-export default defineTool(
+export const getWeather = defineTool(
 	"get_weather",
 	"查询指定城市的天气情况",
 	{
@@ -83,3 +83,5 @@ export default defineTool(
 		return pickValuableFields(response);
 	},
 );
+
+export default getWeather;
