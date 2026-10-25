@@ -18,6 +18,52 @@ export type McpServer = {
 	ignoredToolNames?: string[];
 };
 
+/**
+ * 懒加载SDK并建立到指定URL的连接，setup探测和正式加载共用
+ * @param name 客户端名称
+ * @param url MCP服务器地址
+ * @param options headers与可选的超时信号
+ * @returns 已连接的客户端
+ */
+const connectClient = async (
+	name: string,
+	url: string,
+	options?: Omit<McpServer, "type" | "url"> & { signal?: AbortSignal },
+) => {
+	// 动态加载sdk：保持下游懒加载（不用到MCP就不加载283kb），也避免拖慢CLI启动
+	const [{ Client }, { StreamableHTTPClientTransport }] = await Promise.all([
+		import("@modelcontextprotocol/sdk/client"),
+		import("@modelcontextprotocol/sdk/client/streamableHttp.js"),
+	]);
+
+	const transport = new StreamableHTTPClientTransport(new URL(url), {
+		requestInit: { headers: options?.headers, signal: options?.signal },
+	});
+	const client = new Client({ name, version: "1.0.0" });
+	await client.connect(transport);
+
+	return client;
+};
+
+/**
+ * 连上MCP服务器拉一次工具名后立刻断开，不注册到router
+ * @param url MCP服务器地址
+ * @param options headers等配置
+ * @returns 该服务器提供的全部工具名
+ */
+export const listMcpToolNames = async (
+	url: string,
+	options?: Omit<McpServer, "type" | "url">,
+) => {
+	const client = await connectClient("ai-setup", url, options);
+	try {
+		const { tools } = await client.listTools();
+		return tools.map((tool) => tool.name);
+	} finally {
+		await client.close().catch(() => {});
+	}
+};
+
 export class MCPRouter {
 	private entries = new Map<
 		string,
@@ -35,17 +81,7 @@ export class MCPRouter {
 			return;
 		}
 
-		// 动态加载sdk：保持下游懒加载（不用addClient就不加载283kb），也避免拖慢CLI启动
-		const [{ Client }, { StreamableHTTPClientTransport }] = await Promise.all([
-			import("@modelcontextprotocol/sdk/client"),
-			import("@modelcontextprotocol/sdk/client/streamableHttp.js"),
-		]);
-
-		const transport = new StreamableHTTPClientTransport(new URL(url), {
-			requestInit: { headers: options?.headers },
-		});
-		const client = new Client({ name, version: "1.0.0" });
-		await client.connect(transport);
+		const client = await connectClient(name, url, options);
 
 		// 建立“MCP名称-[客户端, 工具列表]”映射
 		const { tools } = await client.listTools();

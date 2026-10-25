@@ -5,6 +5,7 @@
 import readline from "node:readline";
 import { extractErrorMessage, isObject, to } from "@nickyzj2023/utils";
 import type { McpServer } from "../tools/mcp.js";
+import { listMcpToolNames } from "../tools/mcp.js";
 import { getConfigPath, loadConfig, saveConfig } from "../utils/config.js";
 import { listModels } from "../utils/helper.js";
 
@@ -99,18 +100,28 @@ const askMcpServer = async (
 	}
 
 	let ignoredToolNames = current?.ignoredToolNames;
+	// 先探一次工具列表：用户看着清单挑序号即可，不用盲猜工具名
+	const [error, toolNames = []] = await to(
+		listMcpToolNames(url, headers ? { headers } : undefined),
+	);
+	if (error) {
+		console.log(`获取工具列表失败：${extractErrorMessage(error)}`);
+	} else {
+		console.log("该服务器提供的工具：");
+		toolNames.forEach((toolName, i) => {
+			console.log(`${i + 1}. ${toolName}`);
+		});
+	}
+
 	const ignoredInput = (
 		await ask(
-			`忽略的工具名(逗号分隔) [当前为${
+			`忽略的工具(名称或序号，用逗号分隔，也支持1-5这样的连续序号) [当前为${
 				current?.ignoredToolNames?.join(",") ?? "无"
 			}]: `,
 		)
 	).trim();
 	if (ignoredInput) {
-		ignoredToolNames = ignoredInput
-			.split(",")
-			.map((item) => item.trim())
-			.filter(Boolean);
+		ignoredToolNames = parseIgnoredToolNames(ignoredInput, toolNames);
 	}
 
 	return {
@@ -131,6 +142,40 @@ const askMcpServer = async (
 const pickByIndex = (input: string, names: string[]) => {
 	const index = Number(input) - 1;
 	return Number.isInteger(index) ? names[index] : undefined;
+};
+
+/**
+ * 解析“忽略的工具”输入：名称、单个序号、序号段（如1-5,9-12），均可逗号混用
+ * @param input 用户输入
+ * @param toolNames 该服务器的工具名列表，序号按列表顺序（从1开始）换算
+ * @returns 去重后的工具名；越界序号以及无意义的重复会被丢弃
+ */
+const parseIgnoredToolNames = (input: string, toolNames: string[]) => {
+	const picked = input
+		.split(",")
+		.map((item) => item.trim())
+		.filter(Boolean)
+		.flatMap((item) => {
+			const range = /^(\d+)\s*-\s*(\d+)$/.exec(item);
+			// 只有纯数字才算序号，其余原样当工具名
+			if (!range) {
+				return /^\d+$/.test(item) ? [toolNames[Number(item) - 1]] : [item];
+			}
+			const start = Number(range[1]);
+			const end = Number(range[2]);
+			// 只支持从小到大，忽略反向的写法
+			if (start > end) {
+				return [];
+			}
+			return Array.from(
+				{ length: end - start + 1 },
+				(_, i) => toolNames[start + i - 1],
+			);
+		})
+		// 列表拉取失败或序号越界时取到undefined，直接过滤
+		.filter((name): name is string => Boolean(name));
+
+	return [...new Set(picked)];
 };
 
 /**
