@@ -209,6 +209,10 @@ export class TUI {
 				this.printToolCall(event.name, event.args);
 				break;
 			}
+			case "result": {
+				this.printContent(event.content);
+				break;
+			}
 			case "tool_result": {
 				this.printToolResult(event.name, event.result);
 				break;

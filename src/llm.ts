@@ -1,5 +1,5 @@
 // ================================
-// 解析OpenAI API Compatible的SSE事件流
+// 只解析OpenAI API Compatible的SSE事件流，让Agent处理事件
 // ================================
 
 import {
@@ -11,10 +11,12 @@ import {
 } from "@nickyzj2023/utils";
 import type {
 	ChatCompletionsChunk,
+	ChatCompletionsResponse,
 	FinishReason,
-	LLMEvent,
 	Message,
 	Model,
+	NonStreamResult,
+	StreamEvent,
 	ToolCall,
 	ToolDefinition,
 	Usage,
@@ -50,7 +52,7 @@ export async function* stream(
 	messages: Message[],
 	tools: ToolDefinition[] = [],
 	options?: Omit<RequestInit, "body"> & { body?: Record<string, unknown> },
-): AsyncGenerator<LLMEvent> {
+): AsyncGenerator<StreamEvent> {
 	// 剥离ToolDefinition里的私有字段/语法糖
 	const validTools = tools.map((tool) => detachToolArguments(tool)[0]);
 
@@ -180,4 +182,56 @@ export async function* stream(
 	}
 	// 2. 发出done事件
 	yield { type: "done", finishReason, usage };
+}
+
+/**
+ * 非流式请求模型，一次性拿到完整回复
+ * @remarks 与stream()共享同一套请求/解析规则，区别在于不做SSE解析
+ * @throws 请求失败（含状态码非2xx）、取消（signal.abort）时抛出异常
+ */
+export async function nonStream(
+	model: Model,
+	messages: Message[],
+	tools: ToolDefinition[] = [],
+	options?: Omit<RequestInit, "body"> & { body?: Record<string, unknown> },
+): Promise<NonStreamResult> {
+	// 剥离ToolDefinition里的私有字段/语法糖
+	const validTools = tools.map((tool) => detachToolArguments(tool)[0]);
+
+	const api = fetcher(model.baseUrl, {
+		headers: {
+			Authorization: `Bearer ${model.apiKey}`,
+		},
+	});
+
+	// 发出请求（非流式响应直接拿到完整结果）
+	const response = await api.post<ChatCompletionsResponse>(
+		"/chat/completions",
+		{
+			stream: false,
+			model: model.model,
+			messages,
+			tools: validTools,
+			...options?.body,
+		},
+		options,
+	);
+
+	const choice = response.choices?.[0];
+	const message = choice?.message;
+
+	return {
+		reasoning: message ? extractReasoning(message) : undefined,
+		// 正常的非流式回复content为字符串，极少数兼容层会回传数组，此时只取文本部分
+		content:
+			typeof message?.content === "string"
+				? message.content
+				: (message?.content ?? [])
+						.filter((part) => part.type === "text")
+						.map((part) => part.text)
+						.join(""),
+		toolCalls: message?.tool_calls ?? [],
+		finishReason: choice?.finish_reason ?? null,
+		usage: response.usage,
+	};
 }

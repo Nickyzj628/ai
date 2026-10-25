@@ -120,11 +120,27 @@ export type ToolCall = {
 };
 
 // ================================
-// llm.ts SSE事件流
+// llm.ts 公共类型（流式/非流式共用）
+// ================================
+
+/** 模型可能返回的finish_reason值：停止/工具调用/上下文超限 */
+export type FinishReason = "stop" | "tool_calls" | "length" | null;
+
+export type Usage = {
+	prompt_tokens: number;
+	completion_tokens: number;
+	total_tokens: number;
+	/** 每秒生成多少个token */
+	speed?: number;
+	[key: string]: any;
+};
+
+// ================================
+// llm.ts 流式请求（stream）
 // ================================
 
 /** stream()对外输出的事件 */
-export type LLMEvent =
+export type StreamEvent =
 	| { type: "reasoning_delta"; delta: string }
 	| { type: "content_delta"; delta: string }
 	| { type: "tool_call"; id: string; name: string; args: any }
@@ -149,22 +165,64 @@ export type ChatCompletionsChunk =
 	  }
 	| "[DONE]";
 
-/** 模型可能返回的finish_reason值：停止/工具调用/上下文超限 */
-export type FinishReason = "stop" | "tool_calls" | "length" | null;
+// ================================
+// llm.ts 非流式请求（complete）
+// ================================
 
-export type Usage = {
-	prompt_tokens: number;
-	completion_tokens: number;
-	total_tokens: number;
-	/** 每秒生成多少个token */
-	speed?: number;
-	[key: string]: any;
+/** complete()内部要处理的非流式响应 */
+export type ChatCompletionsResponse = {
+	id: string;
+	object: "chat.completion";
+	created: number;
+	model: string;
+	choices: {
+		index: number;
+		message: Message;
+		finish_reason: FinishReason;
+	}[];
+	usage?: Usage;
+};
+
+/** complete()对外输出的结果 */
+export type NonStreamResult = {
+	/** 模型的思考内容（已经把各平台的reasoning_content等不规范的思考字段统一为reasoning） */
+	reasoning?: string;
+	/** 模型确定的回复内容 */
+	content: string;
+	/** 模型请求的工具调用（arguments为原始JSON字符串，需自行转换） */
+	toolCalls: ToolCall[];
+	finishReason: FinishReason;
+	usage?: Usage;
 };
 
 // ================================
 // agent.ts
 // ================================
 
+/** runAgent()的可选配置 */
+export type RunAgentOptions = {
+	/** 本轮可用的工具列表 */
+	tools?: ToolDefinition[];
+	/**
+	 * 是否流式输出
+	 * @default false
+	 * @remarks 默认每轮只推送一个result事件；true时逐步推送增量事件
+	 */
+	stream?: boolean;
+};
+
+/** runAgent()非流式模式下，每轮回复结束后的事件 */
+export type NonStreamEvent = {
+	type: "result";
+	/** 模型本轮确定的回复内容 */
+	content: string;
+	/** 模型本轮的思考内容 */
+	reasoning?: string;
+	finishReason: FinishReason;
+	usage?: Usage;
+};
+
 export type AgentEvent =
-	| LLMEvent
+	| StreamEvent
+	| NonStreamEvent
 	| { type: "tool_result"; id: string; name: string; result: string };

@@ -3,83 +3,103 @@
 // ================================
 
 import { to } from "@nickyzj2023/utils";
-import { stream } from "./llm.js";
+import { nonStream, stream } from "./llm.js";
 import type {
 	AgentEvent,
+	FinishReason,
 	Message,
 	Model,
+	RunAgentOptions,
 	ToolCall,
-	ToolDefinition,
+	Usage,
 } from "./types.js";
-import { estimateTextTokens, estimateTokens } from "./utils/helper.js";
+import { estimateFallbackUsage, withSpeed } from "./utils/internalHelper.js";
 
+/**
+ * Agent循环
+ * @param options.stream 是否流式输出，默认false（每轮推送一个result事件）
+ */
 export async function* runAgent(
 	model: Model,
 	messages: Message[],
-	tools: ToolDefinition[],
+	options?: RunAgentOptions,
 ): AsyncGenerator<AgentEvent> {
+	const { tools = [], stream: enableStream = false } = options ?? {};
 	const toolMap = new Map(tools.map((tool) => [tool.function.name, tool]));
 
 	while (true) {
-		// 1. 流式调用大模型，收集回复内容
-		let content = "";
+		// 1. 调用大模型，收集本轮回复内容
 		let reasoning = "";
+		let content = "";
 		const toolCalls: ToolCall[] = [];
-		const promptMessage = messages.slice(-1);
+		let finishReason: FinishReason = null;
+		let usage: Usage | undefined;
 
-		let startTime = 0;
-		for await (const e of stream(model, messages, tools)) {
-			startTime ||= Date.now();
-			switch (e.type) {
-				case "reasoning_delta": {
-					yield e;
-					reasoning += e.delta;
-					break;
-				}
-				case "content_delta": {
-					yield e;
-					content += e.delta;
-					break;
-				}
-				case "tool_call": {
-					yield e;
-					toolCalls.push({
-						id: e.id,
-						type: "function",
-						function: {
-							name: e.name,
-							arguments: e.args,
-						},
-					});
-					break;
-				}
-				case "error": {
-					yield e;
-					break;
-				}
-				case "done": {
-					// 若模型未返回用量，则估算一个
-					if (!e.usage) {
-						const promptTokens = estimateTokens(promptMessage);
-						const completionTokens = estimateTextTokens(content + reasoning);
-						e.usage = {
-							prompt_tokens: promptTokens,
-							completion_tokens: completionTokens,
-							total_tokens:
-								estimateTokens(messages) + promptTokens + completionTokens,
-						};
+		const startTime = Date.now();
+
+		// 流式传输：一边接收llm响应，一边向上转发
+		if (enableStream) {
+			for await (const e of stream(model, messages, tools)) {
+				switch (e.type) {
+					case "reasoning_delta": {
+						yield e;
+						reasoning += e.delta;
+						break;
 					}
-					// 计算本轮回复速度
-					e.usage.speed = Math.floor(
-						e.usage.completion_tokens / ((Date.now() - startTime) / 1000),
-					);
-					yield e;
-					break;
+					case "content_delta": {
+						yield e;
+						content += e.delta;
+						break;
+					}
+					case "tool_call": {
+						yield e;
+						toolCalls.push({
+							id: e.id,
+							type: "function",
+							function: {
+								name: e.name,
+								arguments: e.args,
+							},
+						});
+						break;
+					}
+					case "error": {
+						yield e;
+						return;
+					}
+					case "done": {
+						finishReason = e.finishReason;
+						usage = e.usage;
+						// 等后续补齐用量和速度后再推送
+						break;
+					}
 				}
 			}
 		}
+		// 非流式：一次性拿到并转发完整响应
+		else {
+			const [error, result] = await to(nonStream(model, messages, tools));
+			if (error) {
+				yield { type: "error", message: error.message };
+				return;
+			}
+			reasoning = result.reasoning ?? "";
+			content = result.content;
+			toolCalls.push(...result.toolCalls);
+			finishReason = result.finishReason;
+			usage = result.usage;
+		}
 
-		// 2. 把模型的回复推入上下文
+		// 2. 结算本轮的用量和速度，推送本轮最终事件
+		usage = withSpeed(
+			usage ?? estimateFallbackUsage(messages, content, reasoning),
+			startTime,
+		);
+		yield enableStream
+			? { type: "done", finishReason, usage }
+			: { type: "result", content, reasoning, finishReason, usage };
+
+		// 3. 把模型的回复推入上下文
 		const message: Message = {
 			role: "assistant",
 			content,
@@ -89,12 +109,10 @@ export async function* runAgent(
 		}
 		messages.push(message);
 
-		// 3. 如果没有工具调用，则结束循环
+		// 4. 调用工具，为下一轮对话准备工具结果（如果没有就结束循环）
 		if (toolCalls.length === 0) {
 			return;
 		}
-
-		// 4. 调用工具
 		for (const call of toolCalls) {
 			const { name, arguments: args } = call.function;
 			const tool = toolMap.get(name);
@@ -109,6 +127,7 @@ export async function* runAgent(
 					: JSON.stringify(response);
 			}
 
+			// 推送工具调用结果，然后进入下一轮
 			messages.push({
 				role: "tool",
 				tool_call_id: call.id,

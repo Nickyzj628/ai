@@ -31,7 +31,7 @@ import { loadMCPTools } from "@nickyzj2023/ai/mcp";
 const model = defineModel({
   baseUrl: "https://api.deepseek.com/v1",
   apiKey: process.env.APIKEY,
-  model: "deepseek-v4-flash",
+  model: "deepseek-flash",
 });
 
 const tools = [
@@ -49,18 +49,31 @@ const tools = [
 		}
   })),
   // 自定义工具
-  defineTool("skipReply", "跳过本轮回复", {reason: {type: "string", description: "不回复的理由"}}, () => {
-    const error = new Error(`模型保持沉默，理由：${reason}`);
-		error.name = "skipReply";
-		throw error;
-  }),
+  defineTool("square", "把一个数字平方", { num: {type: "number", description: "一个数字"} }, ({ num }) => num ** 2),
 ];
 
-const messages = [{ role: "user", content: "随机一个负无穷到正无穷的整数" }];
+const messages = [{ role: "user", content: "查询上海天气" }];
 
-for await (const e of runAgent(model, messages, tools)) {
+// Agent层的用法（推荐）
+// 流式传输，思考/回复内容会逐token输出，工具调用会收集完模型的调用请求后一次性执行完
+for await (const e of runAgent(model, messages, { tools, stream: true })) {
   console.log(e);
 }
+// 默认的非流式，result事件包含了最终的reasoning/content/usage等信息
+for await (const e of runAgent(model, messages, { tools })) {
+  if (e.type === "result") console.log(e.content);
+  else if (e.type === "error") console.log(e.message);
+}
+
+// LLM层的用法（Agent用的就是它们，stream/nonStream函数只对模型的响应事件做了转发）
+// 流式传输，和runAgent + stream:true没啥区别
+for await (const e of stream(model, messages, tools)) {
+  console.log(e);
+}
+// 非流式，直接拿到最终结果
+const result = await nonStream(model, messages, tools);
+console.log(result.content, result.usage);
+
 ```
 
 ### 在终端里使用

@@ -83,7 +83,7 @@ const startChat = async (prompt?: string) => {
 		}
 		tools ??= [getWeather, getTime, ...(await mcpLoading)];
 
-		for await (const e of runAgent(model, messages, tools)) {
+		for await (const e of runAgent(model, messages, { tools, stream: true })) {
 			tui.render(e);
 		}
 	});

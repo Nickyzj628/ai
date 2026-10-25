@@ -20,9 +20,9 @@ const defaultReplacerOfToolResultContent: Compact.ReplacerOfToolResultContent =
 		if (!model) {
 			simplifiedContent = "工具结果已被消费";
 		} else {
-			for await (const e of runAgent(model, messages, [])) {
-				if (e.type === "content_delta") {
-					simplifiedContent += e.delta;
+			for await (const e of runAgent(model, messages)) {
+				if (e.type === "result") {
+					simplifiedContent = e.content;
 				} else if (e.type === "error") {
 					throw new Error(e.message);
 				}
@@ -89,9 +89,9 @@ const defaultReplacerOfMediaContent: Compact.ReplacerOfMediaContent = async (
 	if (!model?.modalities?.includes(modality)) {
 		simplifiedContent = "媒体资源已被消费";
 	} else {
-		for await (const e of runAgent(model, messages, [])) {
-			if (e.type === "content_delta") {
-				simplifiedContent += e.delta;
+		for await (const e of runAgent(model, messages)) {
+			if (e.type === "result") {
+				simplifiedContent = e.content;
 			} else if (e.type === "error") {
 				throw new Error(e.message);
 			}
@@ -160,10 +160,9 @@ export const summarizeMessages = async (
 
 	let summarized = "";
 	let usage: Usage | undefined;
-	for await (const e of runAgent(model, summarizable, [])) {
-		if (e.type === "content_delta") {
-			summarized += e.delta;
-		} else if (e.type === "done") {
+	for await (const e of runAgent(model, summarizable)) {
+		if (e.type === "result") {
+			summarized = e.content;
 			usage = e.usage;
 		} else if (e.type === "error") {
 			throw new Error(e.message);
