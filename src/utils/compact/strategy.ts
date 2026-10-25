@@ -1,13 +1,38 @@
 import { createXMLText, logger } from "@nickyzj2023/utils";
-import { runAgent } from "../../agent.js";
+import { nonStream } from "../../llm.js";
 import type { Message, Model, Usage } from "../../types.js";
+import { estimateFallbackUsage, withSpeed } from "../internalHelper.js";
 import { findToolGroupRange, isMediaMessage } from "./helper.js";
 import type { Compact } from "./types.js";
+
+/**
+ * 单轮请求模型，拿到完整回复
+ * @remarks 压缩策略不需要工具调用和中间过程，只用非流式请求
+ */
+const askOnce = async (
+	model: Model,
+	messages: Message[],
+): Promise<{ content: string; usage: Usage }> => {
+	const startTime = Date.now();
+	const result = await nonStream(model, messages);
+	return {
+		content: result.content,
+		usage: withSpeed(
+			result.usage ??
+				estimateFallbackUsage(messages, result.content, result.reasoning ?? ""),
+			startTime,
+		),
+	};
+};
 
 /** 默认的压缩工具结果策略：让大模型精简消息内容 */
 const defaultReplacerOfToolResultContent: Compact.ReplacerOfToolResultContent =
 	async (content, options) => {
 		const { model } = options ?? {};
+		if (!model) {
+			return "工具结果已被消费";
+		}
+
 		const messages: Message[] = [
 			{ role: "user", content },
 			{
@@ -16,20 +41,7 @@ const defaultReplacerOfToolResultContent: Compact.ReplacerOfToolResultContent =
 			},
 		];
 
-		let simplifiedContent = "";
-		if (!model) {
-			simplifiedContent = "工具结果已被消费";
-		} else {
-			for await (const e of runAgent(model, messages)) {
-				if (e.type === "result") {
-					simplifiedContent = e.content;
-				} else if (e.type === "error") {
-					throw new Error(e.message);
-				}
-			}
-		}
-
-		return simplifiedContent;
+		return (await askOnce(model, messages)).content;
 	};
 
 /**
@@ -77,6 +89,10 @@ const defaultReplacerOfMediaContent: Compact.ReplacerOfMediaContent = async (
 	options,
 ) => {
 	const { model, modality = "image" } = options ?? {};
+	if (!model?.modalities?.includes(modality)) {
+		return "媒体资源已被消费";
+	}
+
 	const messages: Message[] = [
 		{ role: "user", content },
 		{
@@ -85,20 +101,7 @@ const defaultReplacerOfMediaContent: Compact.ReplacerOfMediaContent = async (
 		},
 	];
 
-	let simplifiedContent = "";
-	if (!model?.modalities?.includes(modality)) {
-		simplifiedContent = "媒体资源已被消费";
-	} else {
-		for await (const e of runAgent(model, messages)) {
-			if (e.type === "result") {
-				simplifiedContent = e.content;
-			} else if (e.type === "error") {
-				throw new Error(e.message);
-			}
-		}
-	}
-
-	return simplifiedContent;
+	return (await askOnce(model, messages)).content;
 };
 
 /**
@@ -158,22 +161,13 @@ export const summarizeMessages = async (
 		{ role: "user", content: "开始总结上下文" },
 	);
 
-	let summarized = "";
-	let usage: Usage | undefined;
-	for await (const e of runAgent(model, summarizable)) {
-		if (e.type === "result") {
-			summarized = e.content;
-			usage = e.usage;
-		} else if (e.type === "error") {
-			throw new Error(e.message);
-		}
-	}
+	const result = await askOnce(model, summarizable);
 
 	compressible.splice(1, Infinity, {
 		role: "user",
-		content: createXMLText("summary", summarized),
+		content: createXMLText("summary", result.content),
 	});
-	logger(`总结了${count}条消息，消耗：`, usage);
+	logger(`总结了${count}条消息，消耗：`, result.usage);
 	return count;
 };
 

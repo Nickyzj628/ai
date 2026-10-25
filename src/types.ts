@@ -206,23 +206,23 @@ export type RunAgentOptions = {
 	/**
 	 * 是否流式输出
 	 * @default false
-	 * @remarks 默认每轮只推送一个result事件；true时逐步推送增量事件
 	 */
 	stream?: boolean;
 };
 
-/** runAgent()非流式模式下，每轮回复结束后的事件 */
-export type NonStreamEvent = {
-	type: "result";
-	/** 模型本轮确定的回复内容 */
+/** runAgent()每轮回复结束后的事件，流式/非流式统一为done */
+export type DoneEvent = {
+	type: "done";
+	/** 模型本轮确定的回复内容（流式模式下等于本轮所有content_delta的拼接） */
 	content: string;
-	/** 模型本轮的思考内容 */
+	/** 模型本轮的思考内容（流式模式下等于本轮所有reasoning_delta的拼接） */
 	reasoning?: string;
 	finishReason: FinishReason;
 	usage?: Usage;
 };
 
 export type AgentEvent =
-	| StreamEvent
-	| NonStreamEvent
+	// 排除stream()的done，换成带完整内容的DoneEvent
+	| Exclude<StreamEvent, { type: "done" }>
+	| DoneEvent
 	| { type: "tool_result"; id: string; name: string; result: string };

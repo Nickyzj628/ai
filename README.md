@@ -67,9 +67,9 @@ const messages = [{ role: "user", content: "查询上海天气" }];
 for await (const e of runAgent(model, messages, { tools, stream: true })) {
   console.log(e);
 }
-// 默认的非流式，result事件包含了最终的reasoning/content/usage等信息
+// 默认的非流式，done事件包含了本轮完整的reasoning/content/usage等信息
 for await (const e of runAgent(model, messages, { tools })) {
-  if (e.type === "result") console.log(e.content);
+  if (e.type === "done") console.log(e.content);
   else if (e.type === "error") console.log(e.message);
 }
 

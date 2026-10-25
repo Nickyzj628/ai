@@ -90,14 +90,12 @@ export async function* runAgent(
 			usage = result.usage;
 		}
 
-		// 2. 结算本轮的用量和速度，推送本轮最终事件
+		// 2. 结算本轮的用量和速度，推送本轮最终的done事件
 		usage = withSpeed(
 			usage ?? estimateFallbackUsage(messages, content, reasoning),
 			startTime,
 		);
-		yield enableStream
-			? { type: "done", finishReason, usage }
-			: { type: "result", content, reasoning, finishReason, usage };
+		yield { type: "done", content, reasoning, finishReason, usage };
 
 		// 3. 把模型的回复推入上下文
 		const message: Message = {
