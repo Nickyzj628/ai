@@ -15,6 +15,7 @@ import type {
 } from "./types.js";
 import { estimateFallbackUsage, withSpeed } from "./utils/internalHelper.js";
 
+export type ToolCallEvent = Extract<AgentEvent, { type: "tool_call" }>;
 export type ToolResultEvent = Extract<AgentEvent, { type: "tool_result" }>;
 
 /**
@@ -81,13 +82,31 @@ export async function* runAgent(
 		// 非流式：一次性拿到并转发完整响应
 		else {
 			const [error, result] = await to(nonStream(model, messages, tools));
+			// 上报异常事件
 			if (error) {
 				yield { type: "error", message: error.message };
 				return;
 			}
+			// 上报工具调用事件
+			for (const toolCall of result.toolCalls) {
+				const e: ToolCallEvent = {
+					type: "tool_call",
+					id: toolCall.id,
+					name: toolCall.function.name,
+					args: toolCall.function.arguments,
+				};
+				yield e;
+				toolCalls.push({
+					id: e.id,
+					type: "function",
+					function: {
+						name: e.name,
+						arguments: e.args,
+					},
+				});
+			}
 			reasoning = result.reasoning ?? "";
 			content = result.content;
-			toolCalls.push(...result.toolCalls);
 			finishReason = result.finishReason;
 			usage = result.usage;
 		}

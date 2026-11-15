@@ -173,6 +173,7 @@ export async function* stream(
 	// 流式传输结束：
 	// 1. 依次抛出工具调用
 	for (const [, call] of toolCallBuffers) {
+	console.log(1)
 		yield {
 			type: "tool_call",
 			id: call.id,
