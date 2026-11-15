@@ -15,6 +15,8 @@ import type {
 } from "./types.js";
 import { estimateFallbackUsage, withSpeed } from "./utils/internalHelper.js";
 
+export type ToolResultEvent = Extract<AgentEvent, { type: "tool_result" }>;
+
 /**
  * Agent循环
  * @param options.stream 是否流式输出，默认false（每轮推送一个result事件）
@@ -126,12 +128,19 @@ export async function* runAgent(
 			}
 
 			// 推送工具调用结果，然后进入下一轮
+			const tre: ToolResultEvent = {
+				type: "tool_result",
+				id: call.id,
+				name: name,
+				result,
+			};
+			// 如果调用方篡改了result，就把它存下来
+			yield tre;
 			messages.push({
 				role: "tool",
 				tool_call_id: call.id,
-				content: result,
+				content: tre.result,
 			});
-			yield { type: "tool_result", id: call.id, name: name, result };
 		}
 	}
 }
