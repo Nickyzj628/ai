@@ -117,6 +117,8 @@ export type ToolCall = {
 		name: string;
 		arguments: string;
 	};
+	/** Gemini等模型会在工具调用中要求保存thoughtsignature等自定义字段 */
+	[key: string]: any;
 };
 
 // ================================
@@ -143,7 +145,14 @@ export type Usage = {
 export type StreamEvent =
 	| { type: "reasoning_delta"; delta: string }
 	| { type: "content_delta"; delta: string }
-	| { type: "tool_call"; id: string; name: string; args: any }
+	| {
+			type: "tool_call";
+			id: string;
+			name: string;
+			args: any;
+			/** Gemini等模型会在工具调用中要求保存thoughtsignature等自定义字段 */
+			[key: string]: any;
+	  }
 	| { type: "done"; finishReason: FinishReason; usage?: Usage }
 	| { type: "error"; message: string };
 

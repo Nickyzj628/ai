@@ -22,6 +22,7 @@ import type {
 	ToolDefinition,
 	Usage,
 } from "./types.js";
+import { toToolCallEvent } from "./utils/internalHelper.js";
 
 /**
  * 分离ToolDefinition中的valid/internal字段，前者可以传给模型，后者用于本地运算
@@ -191,12 +192,7 @@ export async function* stream(
 	// 流式传输结束：
 	// 1. 依次抛出工具调用
 	for (const [, call] of toolCallBuffers) {
-		yield {
-			type: "tool_call",
-			id: call.id,
-			name: call.function.name,
-			args: call.function.arguments,
-		};
+		yield toToolCallEvent(call);
 	}
 	// 2. 发出done事件
 	yield { type: "done", finishReason, usage };

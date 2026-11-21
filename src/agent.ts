@@ -13,7 +13,12 @@ import type {
 	ToolCall,
 	Usage,
 } from "./types.js";
-import { estimateFallbackUsage, withSpeed } from "./utils/internalHelper.js";
+import {
+	estimateFallbackUsage,
+	toToolCall,
+	toToolCallEvent,
+	withSpeed,
+} from "./utils/internalHelper.js";
 
 export type ToolCallEvent = Extract<AgentEvent, { type: "tool_call" }>;
 export type ToolResultEvent = Extract<AgentEvent, { type: "tool_result" }>;
@@ -56,14 +61,7 @@ export async function* runAgent(
 					}
 					case "tool_call": {
 						yield e;
-						toolCalls.push({
-							id: e.id,
-							type: "function",
-							function: {
-								name: e.name,
-								arguments: e.args,
-							},
-						});
+						toolCalls.push(toToolCall(e));
 						break;
 					}
 					case "error": {
@@ -89,21 +87,8 @@ export async function* runAgent(
 			}
 			// 上报工具调用事件
 			for (const toolCall of result.toolCalls) {
-				const e: ToolCallEvent = {
-					type: "tool_call",
-					id: toolCall.id,
-					name: toolCall.function.name,
-					args: toolCall.function.arguments,
-				};
-				yield e;
-				toolCalls.push({
-					id: e.id,
-					type: "function",
-					function: {
-						name: e.name,
-						arguments: e.args,
-					},
-				});
+				yield toToolCallEvent(toolCall);
+				toolCalls.push(toolCall);
 			}
 			reasoning = result.reasoning ?? "";
 			content = result.content;
