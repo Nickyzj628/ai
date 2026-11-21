@@ -107,7 +107,7 @@ export async function* stream(
 	}
 
 	// 逐行解析SSE事件
-	const toolCallBuffers = new Map<number, ToolCall>();
+	const toolCallBuffers = new Map<number | string, ToolCall>();
 	let usage: Usage | undefined;
 	let finishReason: FinishReason = null;
 	try {
@@ -144,15 +144,9 @@ export async function* stream(
 			// 拼接工具调用请求
 			if (toolCalls) {
 				for (const call of toolCalls) {
-					const {
-						index = 0,
-						type = "function",
-						id,
-						function: fn,
-						...extra
-					} = call;
-
-					const existing = toolCallBuffers.getOrInsert(index, {
+					const { index, type = "function", id, function: fn, ...extra } = call;
+					const tcid = index ?? id; // tool_call的主键，gemini调用工具不给index，所以用id兜底
+					const existing = toolCallBuffers.getOrInsert(tcid, {
 						id: "",
 						type,
 						function: { name: "", arguments: "" },
@@ -168,11 +162,11 @@ export async function* stream(
 						existing.function.arguments += fn.arguments;
 					}
 					// 一些厂商（Gemini）会在工具调用时要求保留CoT等额外信息
-					if (extra) {
+					if (Object.keys(extra).length > 0) {
 						Object.assign(existing, extra);
 					}
 
-					toolCallBuffers.set(index, existing);
+					toolCallBuffers.set(tcid, existing);
 				}
 			}
 
