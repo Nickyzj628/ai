@@ -295,6 +295,37 @@ const askModel = async (
 };
 
 /**
+ * 询问自定义请求体：JSON对象，每轮请求时带上，如 {"reasoning_effort":"low"}
+ * @param current 现有的自定义请求体，回车沿用，输入空对象{}表示清空
+ * @returns 录入完成的请求体；解析失败或不是JSON对象时返回原值
+ */
+const askBody = async (current?: Record<string, unknown>) => {
+	const input = (
+		await ask(
+			`自定义请求体(单行JSON对象，{}表示清空) [当前为${
+				current ? JSON.stringify(current) : "无"
+			}]: `,
+		)
+	).trim();
+	if (!input) {
+		return current;
+	}
+
+	try {
+		const parsed = JSON.parse(input) as unknown;
+		if (!isObject(parsed)) {
+			console.log("自定义请求体需为JSON对象，已沿用原先的值");
+			return current;
+		}
+		// 空对象视为清空，免得配置里留个没用的body字段
+		return Object.keys(parsed).length ? parsed : undefined;
+	} catch {
+		console.log("自定义请求体解析失败，已沿用原先的值");
+		return current;
+	}
+};
+
+/**
  * setup入口：依次询问BASE_URL / MODEL / APIKEY，确认后写入全局配置
  */
 export async function runSetup() {
@@ -309,6 +340,9 @@ export async function runSetup() {
 	// 模型列表依赖上面两个值，所以放在这里问，用户刚改的地址当场就能拉到
 	const model = await askModel(baseUrl, apiKey, config?.model);
 
+	// 部分厂商靠额外的请求体字段开关思考等能力，这里让用户自己填
+	const body = await askBody(config?.body);
+
 	// MCP配置：询问是否配置，确认后进入编辑菜单
 	const mcpServers = { ...config?.mcpServers };
 	const wantMcp = (await ask("是否配置MCP服务器？(y/n): "))
@@ -319,7 +353,13 @@ export async function runSetup() {
 	}
 
 	try {
-		saveConfig({ baseUrl, apiKey, model, mcpServers });
+		saveConfig({
+			baseUrl,
+			apiKey,
+			model,
+			...(body ? { body } : {}),
+			mcpServers,
+		});
 		console.log(`配置已保存到${getConfigPath()}，直接运行ai即可开始对话`);
 	} catch (e) {
 		console.error(`保存配置失败：${extractErrorMessage(e)}`);

@@ -11,6 +11,8 @@ export type Config = {
 	baseUrl: string;
 	apiKey: string;
 	model: string;
+	/** 自定义请求体，会在每轮请求时带上（如thinking、reasoning_effort） */
+	body?: Record<string, unknown>;
 	mcpServers?: Record<string, McpServer>;
 };
 

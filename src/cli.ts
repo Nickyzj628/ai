@@ -48,8 +48,9 @@ const startChat = async (prompt?: string) => {
 		process.exit(1);
 	}
 
-	// 2. 组装模型配置
-	const model = defineModel(config);
+	// 2. 组装模型配置：自定义请求体直接展开成请求体字段
+	const { body, ...modelConfig } = config;
+	const model = defineModel({ ...modelConfig, ...body });
 
 	// 3. 后台加载MCP工具：不await，先启动TUI让用户自由输入，首个请求发出前才等待加载完成
 	let mcpReady = false;
