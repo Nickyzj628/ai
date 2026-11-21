@@ -53,12 +53,15 @@ export async function* stream(
 	tools: ToolDefinition[] = [],
 	options?: Omit<RequestInit, "body"> & { body?: Record<string, unknown> },
 ): AsyncGenerator<StreamEvent> {
+	// 剥离出能传到/chat/completions的字段
+	const { baseUrl, apiKey, modalities, ...modelBody } = model;
+
 	// 剥离ToolDefinition里的私有字段/语法糖
 	const validTools = tools.map((tool) => detachToolArguments(tool)[0]);
 
-	const api = fetcher(model.baseUrl, {
+	const api = fetcher(baseUrl, {
 		headers: {
-			Authorization: `Bearer ${model.apiKey}`,
+			Authorization: `Bearer ${apiKey}`,
 		},
 		// 覆盖默认返回的res.json()，改用野生Response
 		parser: async (res) => res,
@@ -70,7 +73,7 @@ export async function* stream(
 			"/chat/completions",
 			{
 				stream: true,
-				model: model.model,
+				...modelBody,
 				messages,
 				tools: validTools,
 				...options?.body,
@@ -173,7 +176,6 @@ export async function* stream(
 	// 流式传输结束：
 	// 1. 依次抛出工具调用
 	for (const [, call] of toolCallBuffers) {
-	console.log(1)
 		yield {
 			type: "tool_call",
 			id: call.id,
@@ -196,12 +198,15 @@ export async function nonStream(
 	tools: ToolDefinition[] = [],
 	options?: Omit<RequestInit, "body"> & { body?: Record<string, unknown> },
 ): Promise<NonStreamResult> {
+	// 剥离出能传到/chat/completions的字段
+	const { baseUrl, apiKey, modalities, ...modelBody } = model;
+
 	// 剥离ToolDefinition里的私有字段/语法糖
 	const validTools = tools.map((tool) => detachToolArguments(tool)[0]);
 
-	const api = fetcher(model.baseUrl, {
+	const api = fetcher(baseUrl, {
 		headers: {
-			Authorization: `Bearer ${model.apiKey}`,
+			Authorization: `Bearer ${apiKey}`,
 		},
 	});
 
@@ -210,7 +215,7 @@ export async function nonStream(
 		"/chat/completions",
 		{
 			stream: false,
-			model: model.model,
+			...modelBody,
 			messages,
 			tools: validTools,
 			...options?.body,

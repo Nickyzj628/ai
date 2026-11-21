@@ -21,7 +21,7 @@ export type Model = {
 	/**
 	 * 模型的最大上下文
 	 * @default 131072
-	 * @remarks 会在每轮对话结束后检查上下文阈值，自动压缩消息
+	 * @remarks 调用compact函数时会根据模型上下文长度触发不同的压缩策略
 	 */
 	context?: number;
 	/**
