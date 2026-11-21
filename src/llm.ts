@@ -5,6 +5,7 @@
 import {
 	extractErrorMessage,
 	fetcher,
+	omit,
 	parseSSE,
 	pick,
 	to,
@@ -23,13 +24,26 @@ import type {
 } from "./types.js";
 
 /**
- * 分离ToolDefinition中的valid/invalid字段，前者可以传给模型，后者用于本地运算
- * @returns [validObj, invalidObj]
+ * 分离ToolDefinition中的valid/internal字段，前者可以传给模型，后者用于本地运算
+ * @returns [validObj, internalObj]
  */
 const detachToolArguments = (toolDefinition: ToolDefinition) => {
 	return [
 		pick(toolDefinition, ["type", "function"]),
 		pick(toolDefinition, ["execute"]),
+	] as const;
+};
+
+/**
+ * 分离Model中的payload/internal字段，前者可以传给模型，后者用于本地运算
+ * @returns [payloadObj, internalObj]
+ */
+const detachModelPayload = (model: Model) => {
+	const { baseUrl, apiKey, modalities, context, mcpServers, ...payload } =
+		model;
+	return [
+		payload,
+		{ baseUrl, apiKey, modalities, context, mcpServers },
 	] as const;
 };
 
@@ -53,8 +67,8 @@ export async function* stream(
 	tools: ToolDefinition[] = [],
 	options?: Omit<RequestInit, "body"> & { body?: Record<string, unknown> },
 ): AsyncGenerator<StreamEvent> {
-	// 剥离出能传到/chat/completions的字段
-	const { baseUrl, apiKey, modalities, ...modelBody } = model;
+	// 剥离Model里可以传给供应商的自定义请求体
+	const [modelPayload, { baseUrl, apiKey }] = detachModelPayload(model);
 
 	// 剥离ToolDefinition里的私有字段/语法糖
 	const validTools = tools.map((tool) => detachToolArguments(tool)[0]);
@@ -73,12 +87,13 @@ export async function* stream(
 			"/chat/completions",
 			{
 				stream: true,
-				...modelBody,
 				messages,
 				tools: validTools,
+				// 自定义请求体的优先级：model < options.body
+				...modelPayload,
 				...options?.body,
 			},
-			options,
+			omit(options ?? {}, ["body"]),
 		),
 	);
 	if (error) {
@@ -198,8 +213,8 @@ export async function nonStream(
 	tools: ToolDefinition[] = [],
 	options?: Omit<RequestInit, "body"> & { body?: Record<string, unknown> },
 ): Promise<NonStreamResult> {
-	// 剥离出能传到/chat/completions的字段
-	const { baseUrl, apiKey, modalities, ...modelBody } = model;
+	// 剥离Model里可以传给供应商的自定义请求体
+	const [modelPayload, { baseUrl, apiKey }] = detachModelPayload(model);
 
 	// 剥离ToolDefinition里的私有字段/语法糖
 	const validTools = tools.map((tool) => detachToolArguments(tool)[0]);
@@ -215,12 +230,13 @@ export async function nonStream(
 		"/chat/completions",
 		{
 			stream: false,
-			...modelBody,
 			messages,
 			tools: validTools,
+			// 自定义请求体的优先级：model < options.body
+			...modelPayload,
 			...options?.body,
 		},
-		options,
+		omit(options ?? {}, ["body"]),
 	);
 
 	const choice = response.choices?.[0];
