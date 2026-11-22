@@ -99,6 +99,8 @@ ai 你好
 
 配置保存在 `~/.@nickyzj2023/ai/config.json`，任意目录下执行`ai`都能读取到
 
+终端里的`ai`还会把MCP工具列表缓存到同目录的`mcp-cache.json`：MCP配置没变时开聊直接读缓存，连服务器推迟到真正调用某个MCP工具时；配置变过（`ai setup`里改的）才会重新拉一遍工具并覆盖缓存。这份缓存只属于全局安装的CLI，在项目里`import loadMCPTools`的用法不读写它
+
 ## License
 
 ISC

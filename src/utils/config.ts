@@ -25,6 +25,14 @@ export const getConfigPath = () => {
 };
 
 /**
+ * 获取MCP工具缓存文件路径：和config.json放在同一目录
+ * @returns （Windows下）C:/Users/Administrator/.@nickyzj2023/ai/mcp-cache.json
+ */
+export const getMcpToolsCachePath = () => {
+	return join(dirname(getConfigPath()), "mcp-cache.json");
+};
+
+/**
  * 读取配置文件
  * @returns 正常返回Config，配置不存在或损坏时返回null
  */

@@ -13,8 +13,8 @@ import {
 import { runSetup } from "./interfaces/setup.js";
 import { TUI } from "./interfaces/tui.js";
 import { getTime, getWeather } from "./tools/index.js";
-import { loadMCPTools } from "./tools/mcp.js";
 import { loadConfig } from "./utils/config.js";
+import { loadCachedMCPTools } from "./utils/mcp-cache.js";
 
 /**
  * 组装用户消息的content
@@ -52,9 +52,10 @@ const startChat = async (prompt?: string) => {
 	const { body, ...modelConfig } = config;
 	const model = defineModel({ ...modelConfig, ...body });
 
-	// 3. 后台加载MCP工具：不await，先启动TUI让用户自由输入，首个请求发出前才等待加载完成
+	// 3. 后台加载MCP工具：配置没变就直接用mcp-cache.json里的缓存，几乎不用等；
+	//    没缓存或刚改过配置才真的去连，那时也不await，先启动TUI让用户自由输入
 	let mcpReady = false;
-	const mcpLoading = loadMCPTools(config.mcpServers).then((tools) => {
+	const mcpLoading = loadCachedMCPTools(config.mcpServers).then((tools) => {
 		mcpReady = true;
 		return tools;
 	});

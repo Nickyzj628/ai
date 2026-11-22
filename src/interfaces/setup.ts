@@ -8,6 +8,7 @@ import type { McpServer } from "../tools/mcp.js";
 import { listMcpToolNames } from "../tools/mcp.js";
 import { getConfigPath, loadConfig, saveConfig } from "../utils/config.js";
 import { listModels } from "../utils/helper.js";
+import { loadCachedMCPTools } from "../utils/mcp-cache.js";
 
 /**
  * 临时创建readline接口，问答结束就关闭
@@ -180,8 +181,11 @@ const parseIgnoredToolNames = (input: string, toolNames: string[]) => {
 
 /**
  * MCP配置菜单：列出现有服务器，数字键编辑、a键添加、d键删除、回车或q结束
+ * @remarks 改过配置就当场把工具拉下来写进缓存，下次开聊直接读缓存
  */
 const configMcp = async (mcpServers: Record<string, McpServer>) => {
+	let changed = false;
+
 	while (true) {
 		const names = Object.keys(mcpServers);
 		console.log("\n当前MCP服务器：");
@@ -215,6 +219,7 @@ const configMcp = async (mcpServers: Record<string, McpServer>) => {
 				const result = await askMcpServer();
 				if (result) {
 					mcpServers[result.name] = result;
+					changed = true;
 				}
 				break;
 			}
@@ -231,6 +236,7 @@ const configMcp = async (mcpServers: Record<string, McpServer>) => {
 					.toLowerCase();
 				if (confirm === "y") {
 					delete mcpServers[oldName];
+					changed = true;
 					console.log(`已删除${oldName}`);
 				} else {
 					console.log("已取消删除");
@@ -252,6 +258,7 @@ const configMcp = async (mcpServers: Record<string, McpServer>) => {
 						}
 						delete mcpServers[oldName];
 						mcpServers[result.name] = result;
+						changed = true;
 					}
 				} else {
 					console.log("无效选择，请输入列表中的数字、a、d或回车");
@@ -259,6 +266,13 @@ const configMcp = async (mcpServers: Record<string, McpServer>) => {
 				break;
 			}
 		}
+	}
+
+	// 没改过配置就不用白连一遍，缓存还是上次写的那份
+	if (changed) {
+		console.log("正在加载MCP工具并写入缓存……");
+		const tools = await loadCachedMCPTools(mcpServers);
+		console.log(`已缓存${tools.length}个MCP工具，之后聊天无需等待MCP加载\n`);
 	}
 };
 
